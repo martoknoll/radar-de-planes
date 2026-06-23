@@ -3,34 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="Radar de Planes: descubrí eventos, actividades y salidas cerca tuyo en Buenos Aires." />
-  <meta name="theme-color" content="#11121A" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%23FF6B4A%22/></svg>">
-  <title>Radar de Planes</title>
+  <meta name="description" content="Sonda: la ciudad da señales. Descubrí planes, eventos y actividades cerca tuyo en Buenos Aires." />
+  <meta name="theme-color" content="#080A0F" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2238%22 fill=%22%2300F5D4%22/></svg>">
+  <title>Sonda — La ciudad da señales</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
 
   <style>
     :root{
-      --bg:#11121A;
-      --bg-2:#171824;
-      --surface:#202231;
-      --surface-2:#292B3B;
-      --surface-3:#323545;
-      --text:#F7F1E8;
-      --muted:#A0A7B8;
-      --faint:#6F768A;
-      --border:rgba(247,241,232,.10);
-      --border-strong:rgba(247,241,232,.18);
-      --coral:#FF6B4A;
-      --coral-2:#FF9B7E;
-      --mint:#4ADE9C;
-      --blue:#7CCBFF;
-      --yellow:#FFD166;
+      /* Sonda — dark urbana minimal, mapa vivo, señales */
+      --bg:#080A0F;
+      --bg-2:#0D1018;
+      --surface:#121620;
+      --surface-2:#191D2A;
+      --surface-3:#232838;
+      --text:#F5F7FA;
+      --muted:#9CA3AF;
+      --faint:#6B7280;
+      --border:rgba(255,255,255,.08);
+      --border-strong:rgba(255,255,255,.16);
+      --glass:rgba(18,22,32,.78);
+      /* señal primaria: ubicación, pins activos, CTAs principales */
+      --coral:#00F5D4;
+      --primary:#00F5D4;
+      /* profundidad / categorías / metadata destacada */
+      --coral-2:#7C5CFF;
+      --secondary:#7C5CFF;
+      /* estados positivos: "Voy" */
+      --mint:#B6FF3B;
+      --success:#B6FF3B;
+      /* acción social / destacado: "Me interesa" */
+      --blue:#00F5D4;
+      --yellow:#FF4FD8;
+      --accent:#FF4FD8;
+      --warning:#FEE440;
+      --ink:#04100E;
       --shadow:0 20px 60px rgba(0,0,0,.40);
       --radius-lg:24px;
       --radius-md:18px;
@@ -62,15 +74,15 @@
       white-space:nowrap;border:0;
     }
     *:focus-visible{
-      outline:2px solid var(--mint);
+      outline:2px solid var(--primary);
       outline-offset:3px;
     }
 
     .app{
       min-height:100dvh;
       background:
-        radial-gradient(circle at 20% -10%, rgba(255,107,74,.18), transparent 32%),
-        radial-gradient(circle at 100% 0%, rgba(74,222,156,.10), transparent 24%),
+        radial-gradient(circle at 20% -10%, rgba(0,245,212,.10), transparent 32%),
+        radial-gradient(circle at 100% 0%, rgba(124,92,255,.10), transparent 24%),
         var(--bg);
     }
 
@@ -80,7 +92,7 @@
       top:0;
       z-index:60;
       padding:14px 16px 12px;
-      background:linear-gradient(180deg, rgba(17,18,26,.98), rgba(17,18,26,.92));
+      background:linear-gradient(180deg, rgba(8,10,15,.98), rgba(8,10,15,.92));
       border-bottom:1px solid var(--border);
       backdrop-filter:blur(18px);
     }
@@ -97,20 +109,35 @@
       min-width:0;
     }
     .brand-mark{
+      position:relative;
       width:34px;height:34px;
-      border-radius:12px;
+      border-radius:50%;
       display:grid;
       place-items:center;
-      background:linear-gradient(135deg, var(--coral), var(--yellow));
-      color:#261107;
-      box-shadow:0 0 0 5px rgba(255,107,74,.12);
+      background:linear-gradient(135deg, var(--primary), var(--secondary));
+      color:var(--ink);
+      box-shadow:0 0 0 5px rgba(0,245,212,.10);
       flex:0 0 auto;
+    }
+    .brand-mark::after{
+      content:'';
+      position:absolute;
+      inset:-5px;
+      border-radius:50%;
+      border:1px solid rgba(0,245,212,.35);
+      animation:brandPulse 2.4s ease-out infinite;
+    }
+    .brand-mark i{font-size:15px; position:relative;}
+    @keyframes brandPulse{
+      0%{transform:scale(.82); opacity:.9;}
+      70%{transform:scale(1.25); opacity:0;}
+      100%{transform:scale(1.25); opacity:0;}
     }
     .brand-name{
       display:block;
-      font-family:'Archivo Expanded',sans-serif;
+      font-family:'Space Grotesk',sans-serif;
       font-weight:700;
-      letter-spacing:-.04em;
+      letter-spacing:-.03em;
       line-height:1;
       font-size:20px;
     }
@@ -118,7 +145,7 @@
       display:block;
       margin-top:4px;
       color:var(--muted);
-      font-family:'JetBrains Mono',monospace;
+      font-family:'IBM Plex Mono',monospace;
       font-size:10px;
       letter-spacing:.05em;
       text-transform:uppercase;
@@ -240,7 +267,7 @@
     }
     .segmented button.active{
       background:var(--text);
-      color:#101119;
+      color:var(--ink);
       box-shadow:0 8px 18px rgba(0,0,0,.18);
     }
 
@@ -322,7 +349,7 @@
     }
     .dropdown-menu li:hover,
     .dropdown-menu li:focus-visible{background:rgba(247,241,232,.08); color:var(--text);}
-    .dropdown-menu li[aria-selected="true"]{background:var(--coral); color:#271006; font-weight:800;}
+    .dropdown-menu li[aria-selected="true"]{background:var(--coral); color:var(--ink); font-weight:800;}
     .chip{
       flex:0 0 auto;
       display:inline-flex;
@@ -337,17 +364,21 @@
       font-weight:700;
       font-size:12px;
       white-space:nowrap;
+      transition:transform .12s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
     }
+    .chip:active{transform:scale(.96);}
     .chip i{font-size:15px;}
     .chip.active{
       background:var(--coral);
       border-color:var(--coral);
-      color:#271006;
+      color:var(--ink);
+      box-shadow:0 0 0 1px rgba(0,245,212,.25), 0 4px 14px rgba(0,245,212,.20);
     }
     .chip.active.alt{
       background:var(--mint);
       border-color:var(--mint);
-      color:#082214;
+      color:var(--ink);
+      box-shadow:0 0 0 1px rgba(182,255,59,.25), 0 4px 14px rgba(182,255,59,.18);
     }
 
     /* ---------- Workspace ---------- */
@@ -366,18 +397,19 @@
       min-height:360px;
       border-radius:var(--radius-lg);
       border:1px solid var(--border-strong);
-      background:#141620;
+      background:var(--surface);
       box-shadow:var(--shadow);
     }
-    #map{width:100%; height:100%; background:#141620;}
-    .leaflet-container{font-family:'Inter',sans-serif; background:#141620;}
+    #map{width:100%; height:100%; background:var(--surface);}
+    .leaflet-container{font-family:'Inter',sans-serif; background:var(--surface);}
+    .leaflet-tile-pane{filter:saturate(.7) brightness(.85) hue-rotate(-4deg);}
     .leaflet-control-zoom a{
-      background:rgba(32,34,49,.92)!important;
+      background:rgba(18,22,32,.92)!important;
       color:var(--text)!important;
       border-color:var(--border)!important;
     }
     .leaflet-control-attribution{
-      background:rgba(17,18,26,.75)!important;
+      background:rgba(8,10,15,.75)!important;
       color:var(--faint)!important;
     }
     .leaflet-control-attribution a{color:var(--muted)!important;}
@@ -392,7 +424,7 @@
     .leaflet-popup-content{margin:14px; min-width:190px;}
     .popup-kicker{
       color:var(--coral-2);
-      font-family:'JetBrains Mono',monospace;
+      font-family:'IBM Plex Mono',monospace;
       font-size:10px;
       letter-spacing:.07em;
       text-transform:uppercase;
@@ -406,32 +438,57 @@
       min-height:34px;
       border-radius:10px;
       background:var(--coral);
-      color:#271006;
+      color:var(--ink);
       font-weight:800;
       border:0;
     }
 
     .pin{
-      width:36px;height:36px;
+      position:relative;
+      width:34px;height:34px;
       display:grid;
       place-items:center;
-      border-radius:50% 50% 50% 8px;
-      transform:rotate(-45deg);
+      border-radius:50%;
       background:var(--coral);
-      border:2px solid #11121A;
-      box-shadow:0 8px 20px rgba(0,0,0,.35), 0 0 0 5px rgba(255,107,74,.12);
+      border:2px solid var(--bg);
+      box-shadow:0 8px 20px rgba(0,0,0,.35), 0 0 0 5px rgba(0,245,212,.14);
       transition:transform .15s ease, box-shadow .15s ease;
     }
-    .pin i{transform:rotate(45deg); color:#271006; font-size:16px;}
-    .pin.going{background:var(--mint); box-shadow:0 8px 20px rgba(0,0,0,.35), 0 0 0 5px rgba(74,222,156,.14);}
-    .pin.interested{background:var(--yellow); box-shadow:0 8px 20px rgba(0,0,0,.35), 0 0 0 5px rgba(255,209,102,.14);}
-    .pin.active{transform:rotate(-45deg) scale(1.22); z-index:1000;}
+    .pin i{color:var(--ink); font-size:15px;}
+    .pin.going{background:var(--mint); box-shadow:0 8px 20px rgba(0,0,0,.35), 0 0 0 5px rgba(182,255,59,.16);}
+    .pin.interested{background:var(--yellow); box-shadow:0 8px 20px rgba(0,0,0,.35), 0 0 0 5px rgba(255,79,216,.16);}
+    .pin.going i,.pin.interested i{color:var(--ink);}
+    .pin.active{transform:scale(1.22); z-index:1000;}
+    .pin.active::after{
+      content:'';
+      position:absolute;
+      inset:-6px;
+      border-radius:50%;
+      border:1.5px solid currentColor;
+      color:var(--coral);
+      animation:pinPulse 1.6s ease-out infinite;
+    }
+    .pin.going.active::after{color:var(--mint);}
+    .pin.interested.active::after{color:var(--yellow);}
+    @keyframes pinPulse{
+      0%{transform:scale(.85); opacity:.8;}
+      100%{transform:scale(1.5); opacity:0;}
+    }
     .user-dot{
-      width:18px;height:18px;
+      position:relative;
+      width:16px;height:16px;
       border-radius:50%;
       background:var(--blue);
-      border:3px solid #11121A;
-      box-shadow:0 0 0 6px rgba(124,203,255,.22);
+      border:3px solid var(--bg);
+      box-shadow:0 0 0 6px rgba(0,245,212,.18);
+    }
+    .user-dot::after{
+      content:'';
+      position:absolute;
+      inset:-8px;
+      border-radius:50%;
+      border:1.5px solid rgba(0,245,212,.6);
+      animation:pinPulse 1.8s ease-out infinite;
     }
 
     .map-status{
@@ -455,7 +512,7 @@
     .map-status button{
       margin-left:auto;
       background:var(--mint);
-      color:#082214;
+      color:var(--ink);
       border:0;
       border-radius:999px;
       min-height:28px;
@@ -481,7 +538,7 @@
       font-weight:800;
       font-size:12px;
     }
-    .result-pill span{color:var(--mint); font-family:'JetBrains Mono',monospace;}
+    .result-pill span{color:var(--mint); font-family:'IBM Plex Mono',monospace;}
 
     .nearby-strip{
       display:flex;
@@ -504,7 +561,7 @@
     .mini-card small{
       display:block;
       color:var(--coral-2);
-      font-family:'JetBrains Mono',monospace;
+      font-family:'IBM Plex Mono',monospace;
       font-size:10px;
       text-transform:uppercase;
       letter-spacing:.06em;
@@ -527,7 +584,7 @@
       gap:12px;
       margin:2px 0 12px;
     }
-    .list-title{margin:0; font-family:'Archivo Expanded',sans-serif; font-size:18px; letter-spacing:-.04em;}
+    .list-title{margin:0; font-family:'Space Grotesk',sans-serif; font-size:18px; letter-spacing:-.04em;}
     .list-subtitle{margin:4px 0 0; color:var(--muted); font-size:12px; line-height:1.35;}
     .sort-select{
       flex:0 0 auto;
@@ -562,7 +619,7 @@
       position:absolute;
       inset:auto 0 0;
       height:1px;
-      background:linear-gradient(90deg, transparent, rgba(255,107,74,.45), transparent);
+      background:linear-gradient(90deg, transparent, rgba(0,245,212,.45), transparent);
       opacity:0;
       transition:opacity .15s ease;
     }
@@ -573,7 +630,7 @@
     .event-card.ticket-flash{border-color:var(--coral); animation:ticketFlash 0.9s ease;}
     @keyframes ticketFlash{
       0%{ background:var(--surface-2); }
-      30%{ background:rgba(255,107,74,.28); }
+      30%{ background:rgba(0,245,212,.28); }
       100%{ background:var(--surface-2); }
     }
     .event-img{
@@ -596,7 +653,7 @@
       gap:5px;
       min-width:0;
       color:var(--coral-2);
-      font-family:'JetBrains Mono',monospace;
+      font-family:'IBM Plex Mono',monospace;
       font-size:10px;
       letter-spacing:.06em;
       text-transform:uppercase;
@@ -604,16 +661,17 @@
     }
     .event-price{
       color:var(--mint);
-      font-family:'JetBrains Mono',monospace;
+      font-family:'IBM Plex Mono',monospace;
       font-weight:800;
       font-size:11px;
       white-space:nowrap;
     }
     .event-title{
       margin:0;
+      font-family:'Space Grotesk',sans-serif;
       font-size:16px;
-      line-height:1.18;
-      font-weight:900;
+      line-height:1.2;
+      font-weight:700;
       letter-spacing:-.02em;
       display:-webkit-box;
       -webkit-line-clamp:2;
@@ -625,7 +683,9 @@
       flex-wrap:wrap;
       gap:7px;
       color:var(--muted);
-      font-size:12px;
+      font-family:'IBM Plex Mono',monospace;
+      font-size:11px;
+      letter-spacing:.01em;
       line-height:1.2;
     }
     .event-meta span{
@@ -661,9 +721,9 @@
       font-weight:900;
       white-space:nowrap;
     }
-    .status-badge.going{background:rgba(74,222,156,.15); color:var(--mint);}
-    .status-badge.interested{background:rgba(255,209,102,.14); color:var(--yellow);}
-    .distance-badge{margin-left:auto; font-family:'JetBrains Mono',monospace; color:var(--text);}
+    .status-badge.going{background:rgba(182,255,59,.15); color:var(--mint);}
+    .status-badge.interested{background:rgba(255,79,216,.14); color:var(--yellow);}
+    .distance-badge{margin-left:auto; font-family:'IBM Plex Mono',monospace; color:var(--text);}
 
     .empty-state{
       border:1px dashed var(--border-strong);
@@ -687,9 +747,9 @@
       display:grid;
       place-items:center;
       background:linear-gradient(135deg, var(--coral), var(--yellow));
-      color:#271006;
+      color:var(--ink);
       border:0;
-      box-shadow:0 16px 44px rgba(255,107,74,.35);
+      box-shadow:0 16px 44px rgba(0,245,212,.35);
       font-size:27px;
     }
     .fab:active{transform:scale(.96);}
@@ -760,7 +820,7 @@
     .detail-content{padding:18px 20px 22px;}
     .detail-kicker{
       color:var(--coral-2);
-      font-family:'JetBrains Mono',monospace;
+      font-family:'IBM Plex Mono',monospace;
       font-size:11px;
       letter-spacing:.07em;
       text-transform:uppercase;
@@ -768,7 +828,7 @@
     }
     .detail-title{
       margin:8px 0 14px;
-      font-family:'Archivo Expanded',sans-serif;
+      font-family:'Space Grotesk',sans-serif;
       font-size:24px;
       line-height:1.12;
       letter-spacing:-.05em;
@@ -823,7 +883,7 @@
       border-radius:16px;
       display:grid;
       place-items:center;
-      background:rgba(255,107,74,.18);
+      background:rgba(0,245,212,.18);
       color:var(--coral-2);
       font-weight:900;
     }
@@ -853,10 +913,14 @@
       justify-content:center;
       gap:8px;
       font-weight:900;
+      transition:transform .12s ease, filter .12s ease;
     }
-    .primary-btn{background:var(--coral); color:#271006;}
-    .primary-btn.mint{background:var(--mint); color:#082214;}
-    .primary-btn.yellow{background:var(--yellow); color:#261b04;}
+    .primary-btn:active,
+    .secondary-btn:active,
+    .ghost-btn:active{transform:scale(.97);}
+    .primary-btn{background:var(--coral); color:var(--ink); box-shadow:0 6px 18px rgba(0,245,212,.18);}
+    .primary-btn.mint{background:var(--mint); color:var(--ink);}
+    .primary-btn.yellow{background:var(--yellow); color:var(--ink);}
     .secondary-btn{
       background:rgba(247,241,232,.07);
       color:var(--text);
@@ -873,7 +937,7 @@
     .form-content{padding:16px 20px 24px;}
     .form-title{
       margin:0 42px 6px 0;
-      font-family:'Archivo Expanded',sans-serif;
+      font-family:'Space Grotesk',sans-serif;
       font-size:23px;
       line-height:1.1;
       letter-spacing:-.05em;
@@ -905,14 +969,14 @@
     }
     .field textarea{padding:12px 13px; min-height:96px; resize:vertical; line-height:1.5;}
     .field input::placeholder,.field textarea::placeholder{color:var(--faint);}
-    .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--coral); box-shadow:0 0 0 4px rgba(255,107,74,.10);}
+    .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--coral); box-shadow:0 0 0 4px rgba(0,245,212,.10);}
     .address-row{display:grid; grid-template-columns:1fr auto; gap:8px;}
     .address-row .secondary-btn{min-height:46px; padding:0 13px;}
     #formMap{
       height:210px;
       border-radius:18px;
       overflow:hidden;
-      background:#141620;
+      background:var(--surface);
       border:1px solid var(--border);
     }
     .helper-text,.form-note,.geocode-status{
@@ -939,7 +1003,7 @@
       border-radius:17px;
       border:0;
       background:linear-gradient(135deg, var(--coral), var(--yellow));
-      color:#271006;
+      color:var(--ink);
       font-size:15px;
       font-weight:950;
     }
@@ -978,7 +1042,7 @@
     }
     .auth-mode-toggle button.active{
       background:var(--coral);
-      color:#271006;
+      color:var(--ink);
     }
     .pref-list{display:flex; flex-direction:column; gap:8px; margin-bottom:18px;}
     .pref-item{
@@ -1011,8 +1075,8 @@
     .my-plan-badge{
       font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px;
     }
-    .my-plan-badge.interested{background:rgba(255,209,102,.15); color:var(--yellow);}
-    .my-plan-badge.going{background:rgba(74,222,156,.15); color:var(--mint);}
+    .my-plan-badge.interested{background:rgba(255,79,216,.15); color:var(--yellow);}
+    .my-plan-badge.going{background:rgba(182,255,59,.15); color:var(--mint);}
 
     .toast{
       position:fixed;
@@ -1026,7 +1090,7 @@
       padding:12px 14px;
       border-radius:16px;
       background:var(--mint);
-      color:#082214;
+      color:var(--ink);
       font-weight:900;
       box-shadow:0 14px 40px rgba(0,0,0,.34);
       opacity:0;
@@ -1108,11 +1172,11 @@
   <div class="app" id="app">
     <header class="app-header" role="banner">
       <div class="brand-row">
-        <div class="brand" aria-label="Radar de Planes">
-          <div class="brand-mark" aria-hidden="true"><i class="ti ti-radar-2"></i></div>
+        <div class="brand" aria-label="Sonda">
+          <div class="brand-mark" aria-hidden="true"><i class="ti ti-circle-dot"></i></div>
           <div>
-            <span class="brand-name">Radar de Planes</span>
-            <span class="brand-kicker" id="locationLabel">Buenos Aires · demo MVP</span>
+            <span class="brand-name">Sonda</span>
+            <span class="brand-kicker" id="locationLabel">Qué está pasando cerca tuyo</span>
           </div>
         </div>
         <div class="header-actions">
@@ -1128,7 +1192,7 @@
         </button>
         <label class="search-box" for="searchInput">
           <i class="ti ti-search" aria-hidden="true"></i>
-          <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar cine, ferias, Palermo..." />
+          <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar planes, zonas o categorías" />
         </label>
         <button type="button" class="icon-btn" id="clearSearchBtn" aria-label="Limpiar búsqueda" hidden><i class="ti ti-x"></i></button>
       </div>
@@ -1332,28 +1396,28 @@ const SEED_EVENTS = [
     id:'seed-13', title:'Feria de antigüedades de Belgrano', category:'feria',
     lat:-34.5633, lng:-58.4566, date: todayStr(), time:'11:00', price:'Gratis',
     desc:'Feria de antigüedades y objetos vintage en las Barrancas de Belgrano. (Contenido de ejemplo para hoy.)',
-    address:'Barrancas de Belgrano', organizer:'Demo Radar de Planes',
+    address:'Barrancas de Belgrano', organizer:'Demo Sonda',
     img:'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=600&q=70'
   },
   {
     id:'seed-14', title:'Recital acústico en Belgrano', category:'musica',
     lat:-34.5650, lng:-58.4525, date: todayStr(), time:'20:00', price:'$3000',
     desc:'Recital acústico íntimo en un bar de Belgrano. (Contenido de ejemplo para hoy.)',
-    address:'Av. Cabildo al 2000, Belgrano', organizer:'Demo Radar de Planes',
+    address:'Av. Cabildo al 2000, Belgrano', organizer:'Demo Sonda',
     img:'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&q=70'
   },
   {
     id:'seed-15', title:'Cine de barrio: clásico argentino', category:'cine',
     lat:-34.5605, lng:-58.4580, date: todayStr(), time:'19:00', price:'Gratis',
     desc:'Proyección al aire libre de un clásico del cine argentino en Belgrano. (Contenido de ejemplo para hoy.)',
-    address:'Plaza Belgrano', organizer:'Demo Radar de Planes',
+    address:'Plaza Belgrano', organizer:'Demo Sonda',
     img:'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&q=70'
   },
   {
     id:'seed-16', title:'Picada y cerveza artesanal en Belgrano', category:'gastro',
     lat:-34.5615, lng:-58.4555, date: todayStr(), time:'18:30', price:'$2500',
     desc:'Encuentro gastronómico con picadas y cerveza artesanal en Belgrano. (Contenido de ejemplo para hoy.)',
-    address:'Av. Cabildo, Belgrano', organizer:'Demo Radar de Planes',
+    address:'Av. Cabildo, Belgrano', organizer:'Demo Sonda',
     img:'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&q=70'
   }
 ];
@@ -1608,9 +1672,9 @@ function makeEventIcon(ev){
   return L.divIcon({
     className:'',
     html:`<div class="pin ${statusClass} ${activeClass}" id="pin-${ev.id}"><i class="ti ${catInfo(ev.category).icon}"></i></div>`,
-    iconSize:[36,36],
-    iconAnchor:[18,32],
-    popupAnchor:[0,-30]
+    iconSize:[34,34],
+    iconAnchor:[17,17],
+    popupAnchor:[0,-22]
   });
 }
 
@@ -1663,8 +1727,8 @@ function renderList(list){
     els.listView.innerHTML = `
       <div class="empty-state">
         <i class="ti ti-map-search" aria-hidden="true"></i>
-        <h3>No aparece ningún plan con esos filtros</h3>
-        <p>Probá ampliar la fecha, sacar "Gratis" o buscar otra categoría. También podés sumar un plan nuevo.</p>
+        <h3>No encontramos señales por acá</h3>
+        <p>Probá ampliar la fecha, sacar "Gratis" o cambiar de categoría. También podés sumar un plan nuevo.</p>
         <div class="empty-actions">
           <button type="button" class="ghost-btn" id="resetFiltersBtn"><i class="ti ti-refresh"></i>Limpiar filtros</button>
           <button type="button" class="secondary-btn" id="emptyAddBtn"><i class="ti ti-plus"></i>Sumar plan</button>
@@ -1754,7 +1818,7 @@ function render(){
 function renderLocationStatus(){
   const hasLocation = !!state.userLocation;
   els.mapStatus.hidden = hasLocation;
-  els.locationLabel.textContent = hasLocation ? 'Cerca de tu ubicación' : 'Buenos Aires · demo MVP';
+  els.locationLabel.textContent = hasLocation ? 'Cerca de tu ubicación' : 'Qué está pasando cerca tuyo';
   els.locationBtn.querySelector('span').textContent = hasLocation ? 'Ubicación activa' : 'Usar ubicación';
   els.sortSelect.querySelector('option[value="distance"]').disabled = !hasLocation;
   if(!hasLocation && state.sortBy === 'distance'){
@@ -2031,7 +2095,7 @@ function initFormMap(){
   const start = state.userLocation ? [state.userLocation.lat, state.userLocation.lng] : BA_CENTER;
   formMap = L.map('formMap', {zoomControl:true, attributionControl:false}).setView(start, 14);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(formMap);
-  const icon = L.divIcon({className:'', html:'<div class="pin"><i class="ti ti-map-pin-plus"></i></div>', iconSize:[36,36], iconAnchor:[18,32]});
+  const icon = L.divIcon({className:'', html:'<div class="pin"><i class="ti ti-map-pin-plus"></i></div>', iconSize:[34,34], iconAnchor:[17,17]});
   formMarker = L.marker(start, {icon, draggable:true}).addTo(formMap);
   formMap.on('click', event => formMarker.setLatLng(event.latlng));
   window.setTimeout(() => formMap.invalidateSize(), 160);
