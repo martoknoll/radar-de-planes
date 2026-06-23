@@ -98,6 +98,30 @@
     text-transform:uppercase;
     letter-spacing:0.04em;
   }
+  .account-btn{
+    background:var(--bg-elevated);
+    border:1px solid var(--border-strong);
+    color:var(--text-dim);
+    width:30px;height:30px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    font-size:16px;
+    flex-shrink:0;
+  }
+  .account-btn.logged-in{color:var(--mint); border-color:var(--mint);}
+
+  .pref-list{display:flex; flex-direction:column; gap:8px; margin-bottom:18px;}
+  .pref-item{
+    display:flex; align-items:center; gap:10px;
+    background:var(--bg-card);
+    border-radius:10px;
+    padding:10px 12px;
+    cursor:pointer;
+  }
+  .pref-item i{font-size:18px; color:var(--text-dim); width:22px; text-align:center;}
+  .pref-item span{flex:1; font-size:14px;}
+  .pref-item input{width:18px; height:18px; accent-color:var(--coral);}
 
   .view-toggle{
     display:flex;
@@ -687,7 +711,10 @@
   <div class="topbar">
     <div class="brand-row">
       <div class="brand"><span class="dot"></span>Radar de Planes</div>
-      <div class="loc-tag" id="locTag">Buenos Aires</div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="loc-tag" id="locTag">Buenos Aires</div>
+        <button type="button" class="account-btn" id="accountBtn" aria-label="Mi cuenta"><i class="ti ti-user-circle"></i></button>
+      </div>
     </div>
     <div class="view-toggle">
       <button type="button" class="active" data-view="mapa" aria-pressed="true"><i class="ti ti-map-2"></i>Mapa</button>
@@ -718,9 +745,18 @@
   <div class="sheet" id="formSheet"></div>
 </div>
 
+<div class="sheet-overlay" id="accountOverlay">
+  <div class="sheet" id="accountSheet"></div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <script>
+const SUPABASE_URL = 'https://fxywhalfwhhqzggayswc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4eXdoYWxmd2hocXpnZ2F5c3djIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjY0MjgsImV4cCI6MjA5NzgwMjQyOH0.2xQJv4kyTeR1P_LO9FAM3IJzYvtLR5KulLyi2lc28iQ';
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const CATEGORIES = [
   {id:'cine', label:'Cine', icon:'ti-movie'},
   {id:'teatro', label:'Teatro', icon:'ti-theater'},
@@ -859,6 +895,8 @@ let formMap, formMarker;
 let activeFilter = 'todos';
 let showTodayOnly = true;
 let sortOrder = 'asc';
+let currentUser = null;
+let userPreferences = new Set();
 let currentView = 'mapa';
 let events = [];
 let interactions = {};
@@ -1466,6 +1504,110 @@ function requestLocation(){
   );
 }
 
+async function loadPreferences(){
+  if(!currentUser){ userPreferences = new Set(); return; }
+  const { data, error } = await supabaseClient
+    .from('category_preferences')
+    .select('category_id')
+    .eq('user_id', currentUser.id);
+  userPreferences = error || !data ? new Set() : new Set(data.map(r => r.category_id));
+}
+
+async function ensureProfile(){
+  if(!currentUser) return;
+  await supabaseClient
+    .from('profiles')
+    .upsert({ id: currentUser.id, display_name: currentUser.email }, { onConflict: 'id' });
+}
+
+async function togglePreference(categoryId, checked){
+  if(!currentUser) return;
+  if(checked){
+    userPreferences.add(categoryId);
+    await supabaseClient.from('category_preferences').upsert({ user_id: currentUser.id, category_id: categoryId });
+  }else{
+    userPreferences.delete(categoryId);
+    await supabaseClient.from('category_preferences').delete().eq('user_id', currentUser.id).eq('category_id', categoryId);
+  }
+}
+
+function updateAccountBtn(){
+  document.getElementById('accountBtn').classList.toggle('logged-in', !!currentUser);
+}
+
+function openAccountSheet(){
+  document.getElementById('mapWrap').style.zIndex = '0';
+  renderAccountSheet();
+  document.getElementById('accountOverlay').classList.add('open');
+}
+
+function closeAccountSheet(){
+  document.getElementById('accountOverlay').classList.remove('open');
+  document.getElementById('mapWrap').style.zIndex = '';
+}
+
+function renderAccountSheet(){
+  const sheet = document.getElementById('accountSheet');
+
+  if(!currentUser){
+    sheet.innerHTML = `
+      <button type="button" class="sheet-close" id="closeAccount"><i class="ti ti-x"></i></button>
+      <div class="sheet-handle"></div>
+      <h2 class="form-title">Mi cuenta</h2>
+      <p class="form-sub">Ingresá con tu email para guardar tus preferencias de planes.</p>
+      <form id="loginForm">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="loginEmail" placeholder="tu@email.com" required>
+        </div>
+        <button type="submit" class="submit-btn">Enviar link de acceso</button>
+        <p class="form-note" id="loginStatus">Te llega un link de acceso a tu email, sin contraseña.</p>
+      </form>
+    `;
+    document.getElementById('loginForm').addEventListener('submit', handleLoginSubmit);
+  }else{
+    const prefItems = CATEGORIES.map(c => `
+      <label class="pref-item">
+        <i class="ti ${c.icon}"></i>
+        <span>${c.label}</span>
+        <input type="checkbox" data-category="${c.id}" ${userPreferences.has(c.id) ? 'checked' : ''}>
+      </label>
+    `).join('');
+
+    sheet.innerHTML = `
+      <button type="button" class="sheet-close" id="closeAccount"><i class="ti ti-x"></i></button>
+      <div class="sheet-handle"></div>
+      <h2 class="form-title">Mi cuenta</h2>
+      <p class="form-sub">${escapeHtml(currentUser.email)}</p>
+      <p class="form-sub" style="margin-top:-12px;">Elegí los tipos de evento que te interesan.</p>
+      <div class="pref-list">${prefItems}</div>
+      <button type="button" class="action-btn" id="logoutBtn" style="width:100%;"><i class="ti ti-logout"></i>Cerrar sesión</button>
+    `;
+    sheet.querySelectorAll('.pref-item input').forEach(input => {
+      input.addEventListener('change', () => togglePreference(input.dataset.category, input.checked));
+    });
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await supabaseClient.auth.signOut();
+    });
+  }
+
+  document.getElementById('closeAccount').onclick = closeAccountSheet;
+}
+
+async function handleLoginSubmit(e){
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const status = document.getElementById('loginStatus');
+  status.textContent = 'Enviando link...';
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.href }
+  });
+  status.textContent = error
+    ? 'No se pudo enviar el link. Probá de nuevo.'
+    : 'Listo, revisá tu email y tocá el link para ingresar.';
+}
+
 async function init(){
   await loadData();
   buildFilters();
@@ -1482,6 +1624,32 @@ async function init(){
   });
   document.getElementById('formOverlay').addEventListener('click', (e) => {
     if(e.target.id === 'formOverlay') closeForm();
+  });
+  document.getElementById('accountBtn').addEventListener('click', openAccountSheet);
+  document.getElementById('accountOverlay').addEventListener('click', (e) => {
+    if(e.target.id === 'accountOverlay') closeAccountSheet();
+  });
+
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  currentUser = sessionData?.session?.user || null;
+  if(currentUser){
+    await ensureProfile();
+    await loadPreferences();
+  }
+  updateAccountBtn();
+
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    currentUser = session?.user || null;
+    if(currentUser){
+      await ensureProfile();
+      await loadPreferences();
+    }else{
+      userPreferences = new Set();
+    }
+    updateAccountBtn();
+    if(document.getElementById('accountOverlay').classList.contains('open')){
+      renderAccountSheet();
+    }
   });
 
   let lastIsDesktop = isDesktop();
