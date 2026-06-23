@@ -35,7 +35,7 @@
       --radius-lg:24px;
       --radius-md:18px;
       --radius-sm:12px;
-      --header-h:220px;
+      --header-h:64px;
       color-scheme:dark;
     }
 
@@ -79,7 +79,7 @@
       position:sticky;
       top:0;
       z-index:60;
-      padding:16px 16px 12px;
+      padding:14px 16px 12px;
       background:linear-gradient(180deg, rgba(17,18,26,.98), rgba(17,18,26,.92));
       border-bottom:1px solid var(--border);
       backdrop-filter:blur(18px);
@@ -89,7 +89,6 @@
       align-items:center;
       justify-content:space-between;
       gap:12px;
-      margin-bottom:10px;
     }
     .brand{
       display:flex;
@@ -179,7 +178,14 @@
       flex:0 0 auto;
     }
     .account-btn.logged-in{color:var(--mint); border-color:var(--mint);}
-    .intro-copy{margin:0 0 12px; color:var(--muted); font-size:13px; line-height:1.4;}
+    .toolbar-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+    }
+    .intro-copy{margin:0; flex:1 1 auto; min-width:0; color:var(--muted); font-size:13px; line-height:1.4;}
     .intro-copy strong{color:var(--text); font-weight:700;}
 
     .search-row{
@@ -223,6 +229,7 @@
       grid-template-columns:1fr 1fr;
       gap:4px;
       padding:4px;
+      margin-bottom:12px;
       border-radius:16px;
       background:rgba(247,241,232,.08);
       border:1px solid var(--border);
@@ -1040,26 +1047,27 @@
 
     /* ---------- Desktop ---------- */
     @media (min-width:980px){
-      :root{--header-h:132px;}
+      :root{--header-h:68px;}
       body{overflow:hidden;}
       .app{height:100dvh; overflow:hidden;}
-      .app-header{
-        display:grid;
-        grid-template-columns:1fr minmax(360px,520px) auto;
-        align-items:center;
-        gap:18px;
-        padding:18px 28px 14px;
-      }
-      .brand-row{margin:0;}
+      .app-header{padding:16px 28px 14px;}
       .brand-name{font-size:23px;}
-      .intro-copy{margin:0; max-width:430px; font-size:14px;}
+      .filters-shell{
+        display:grid;
+        grid-template-columns:1fr minmax(360px,420px);
+        align-items:center;
+        gap:12px 18px;
+        padding:14px 28px;
+      }
+      .toolbar-top{margin:0; flex-direction:column; align-items:flex-start;}
+      .intro-copy{max-width:320px; font-size:13px;}
+      .location-btn{margin-top:8px;}
       .search-row{margin:0; grid-template-columns:1fr auto;}
       .segmented{display:none;}
-      .filters-shell{top:73px; padding:10px 28px 12px;}
-      .filters-row{max-width:560px;}
+      .filters-row{grid-column:1/-1; margin:0; max-width:none;}
       .dropdown{max-width:220px; flex:0 1 220px;}
       .workspace{
-        height:calc(100dvh - 132px);
+        height:calc(100dvh - 192px);
         display:grid;
         grid-template-columns:minmax(420px, .92fr) minmax(520px, 1.08fr);
         gap:0;
@@ -1126,14 +1134,18 @@
           </div>
         </div>
         <div class="header-actions">
-          <button type="button" class="location-btn" id="locationBtn" aria-label="Usar mi ubicación">
-            <i class="ti ti-current-location"></i><span>Usar ubicación</span>
-          </button>
           <button type="button" class="account-btn" id="accountBtn" aria-label="Mi cuenta"><i class="ti ti-user-circle"></i></button>
         </div>
       </div>
+    </header>
 
-      <p class="intro-copy"><strong>Encontrá qué hacer cerca tuyo.</strong> Mapa, lista, filtros rápidos y planes guardados en este dispositivo.</p>
+    <section class="filters-shell" aria-label="Buscar, filtrar y cambiar vista">
+      <div class="toolbar-top">
+        <p class="intro-copy"><strong>Encontrá qué hacer cerca tuyo.</strong> Mapa, lista, filtros rápidos y planes guardados en este dispositivo.</p>
+        <button type="button" class="location-btn" id="locationBtn" aria-label="Usar mi ubicación">
+          <i class="ti ti-current-location"></i><span>Usar ubicación</span>
+        </button>
+      </div>
 
       <div class="search-row">
         <label class="search-box" for="searchInput">
@@ -1147,9 +1159,7 @@
         <button type="button" class="active" data-view="mapa" aria-pressed="true"><i class="ti ti-map-2"></i>Mapa</button>
         <button type="button" data-view="lista" aria-pressed="false"><i class="ti ti-list"></i>Lista</button>
       </nav>
-    </header>
 
-    <section class="filters-shell" aria-label="Filtros de planes">
       <div class="filters-row">
         <div class="dropdown" id="dateFilterDropdown">
           <button type="button" class="dropdown-btn" id="dateFilterBtn" aria-haspopup="listbox" aria-expanded="false">
