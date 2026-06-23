@@ -1215,7 +1215,7 @@
           <button type="button" class="dropdown-btn" id="categoryFilterBtn" aria-haspopup="listbox" aria-expanded="false">
             <span id="categoryFilterLabel">Todos</span><i class="ti ti-chevron-down" aria-hidden="true"></i>
           </button>
-          <ul class="dropdown-menu" id="categoryFilterMenu" role="listbox" aria-label="Filtrar por categoría" hidden></ul>
+          <ul class="dropdown-menu" id="categoryFilterMenu" role="listbox" aria-label="Filtrar por categoría" aria-multiselectable="true" hidden></ul>
         </div>
         <button type="button" class="chip alt" id="freeToggleBtn" aria-pressed="false">
           <i class="ti ti-ticket" aria-hidden="true"></i>Gratis
@@ -1443,7 +1443,7 @@ const SEED_EVENTS = [
 const state = {
   events:[],
   interactions:{},
-  activeCategory:'todos',
+  activeCategories:['todos'],
   dateFilter:'hoy',
   freeOnly:false,
   query:'',
@@ -1594,6 +1594,28 @@ function syncDropdown(menu, label, value){
   if(label && matchedText) label.textContent = matchedText;
 }
 
+function syncCategoryDropdown(){
+  const active = state.activeCategories;
+  els.categoryFilterMenu.querySelectorAll('li').forEach(li => {
+    li.setAttribute('aria-selected', String(active.includes(li.dataset.value)));
+  });
+  let label = 'Todos';
+  if(!active.includes('todos')){
+    label = active.length === 1 ? catInfo(active[0]).label : `${active.length} categorías`;
+  }
+  els.categoryFilterLabel.textContent = label;
+}
+
+function toggleCategory(value){
+  if(value === 'todos'){
+    state.activeCategories = ['todos'];
+    return;
+  }
+  let cats = state.activeCategories.filter(c => c !== 'todos');
+  cats = cats.includes(value) ? cats.filter(c => c !== value) : [...cats, value];
+  state.activeCategories = cats.length ? cats : ['todos'];
+}
+
 function buildFilters(){
   if(!els.categoryFilterMenu.children.length){
     els.categoryFilterMenu.innerHTML = ALL_CATEGORY_CHIPS.map(cat =>
@@ -1601,7 +1623,7 @@ function buildFilters(){
     ).join('');
   }
   syncDropdown(els.dateFilterMenu, els.dateFilterLabel, state.dateFilter);
-  syncDropdown(els.categoryFilterMenu, els.categoryFilterLabel, state.activeCategory);
+  syncCategoryDropdown();
   syncDropdown(els.sortDropdownMenu, els.sortDropdownLabel, els.sortSelect.value);
   els.freeToggleBtn.classList.toggle('active', state.freeOnly);
   els.freeToggleBtn.setAttribute('aria-pressed', state.freeOnly);
@@ -1613,7 +1635,8 @@ function closeAllDropdowns(){
   dropdownClosers.forEach(close => close());
 }
 
-function initDropdown(btn, menu, onSelect){
+function initDropdown(btn, menu, onSelect, options = {}){
+  const closeOnSelect = options.closeOnSelect !== false;
   function close(){
     menu.hidden = true;
     btn.setAttribute('aria-expanded', 'false');
@@ -1631,7 +1654,7 @@ function initDropdown(btn, menu, onSelect){
     const li = event.target.closest('[data-value]');
     if(!li || li.classList.contains('disabled')) return;
     onSelect(li.dataset.value);
-    close();
+    if(closeOnSelect) close();
   });
   dropdownClosers.push(close);
 }
@@ -1641,7 +1664,7 @@ function getFilteredEvents(){
   const q = normalizeText(state.query);
   let list = state.events
     .filter(ev => daysUntil(ev.date) >= 0)
-    .filter(ev => state.activeCategory === 'todos' || ev.category === state.activeCategory)
+    .filter(ev => state.activeCategories.includes('todos') || state.activeCategories.includes(ev.category))
     .filter(ev => {
       if(state.dateFilter === 'hoy') return ev.date === today;
       if(state.dateFilter === 'semana') return daysUntil(ev.date) <= 7;
@@ -1733,7 +1756,9 @@ function renderList(list){
     semana:'Planes de esta semana',
     todos:'Próximos planes'
   };
-  const catLabel = state.activeCategory === 'todos' ? '' : ` · ${catInfo(state.activeCategory).label}`;
+  const activeCats = state.activeCategories;
+  const catLabel = activeCats.includes('todos') ? '' :
+    activeCats.length === 1 ? ` · ${catInfo(activeCats[0]).label}` : ` · ${activeCats.length} categorías`;
   els.resultsTitle.textContent = `${titleByDate[state.dateFilter]}${state.freeOnly ? ' gratis' : ''}${catLabel}`;
 
   const subtitleParts = [];
@@ -1861,7 +1886,7 @@ function setView(view){
 }
 
 function resetFilters(){
-  state.activeCategory = 'todos';
+  state.activeCategories = ['todos'];
   state.dateFilter = 'hoy';
   state.freeOnly = false;
   state.query = '';
@@ -2207,7 +2232,7 @@ function handleFormSubmit(event){
   };
   state.events.unshift(newEvent);
   saveLocalJson(STORAGE_KEYS.events, state.events);
-  state.activeCategory = 'todos';
+  state.activeCategories = ['todos'];
   state.dateFilter = daysUntil(dateValue) === 0 ? 'hoy' : 'todos';
   state.freeOnly = false;
   closeSheet(els.formOverlay);
@@ -2479,9 +2504,9 @@ function bindEvents(){
   });
 
   initDropdown(els.categoryFilterBtn, els.categoryFilterMenu, value => {
-    state.activeCategory = value;
+    toggleCategory(value);
     render();
-  });
+  }, {closeOnSelect:false});
 
   initDropdown(els.sortDropdownBtn, els.sortDropdownMenu, value => {
     els.sortSelect.value = value;
