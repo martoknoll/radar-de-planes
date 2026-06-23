@@ -269,19 +269,61 @@
       gap:8px;
       align-items:center;
     }
-    .filter-select{
+    .filters-row .chip{flex:0 0 auto;}
+    .dropdown{
+      position:relative;
       flex:1 1 0;
       min-width:0;
+    }
+    .dropdown-btn{
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
       min-height:38px;
-      padding:0 32px 0 13px;
+      padding:0 12px;
       border-radius:14px;
       color:var(--text);
       background:rgba(247,241,232,.07);
       border:1px solid var(--border);
       font-size:13px;
       font-weight:700;
+      white-space:nowrap;
     }
-    .filters-row .chip{flex:0 0 auto;}
+    .dropdown-btn span{overflow:hidden; text-overflow:ellipsis;}
+    .dropdown-btn i{font-size:15px; color:var(--faint); transition:transform .15s ease; flex:0 0 auto;}
+    .dropdown-btn[aria-expanded="true"]{border-color:var(--coral);}
+    .dropdown-btn[aria-expanded="true"] i{transform:rotate(180deg); color:var(--coral);}
+    .dropdown-menu{
+      position:absolute;
+      top:calc(100% + 6px);
+      left:0;
+      z-index:60;
+      min-width:100%;
+      max-height:240px;
+      overflow-y:auto;
+      margin:0;
+      padding:6px;
+      list-style:none;
+      border-radius:16px;
+      background:var(--surface);
+      border:1px solid var(--border-strong);
+      box-shadow:0 16px 40px rgba(0,0,0,.4);
+    }
+    .dropdown-menu[hidden]{display:none;}
+    .dropdown-menu li{
+      padding:9px 11px;
+      border-radius:10px;
+      color:var(--muted);
+      font-size:13px;
+      font-weight:600;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .dropdown-menu li:hover,
+    .dropdown-menu li:focus-visible{background:rgba(247,241,232,.08); color:var(--text);}
+    .dropdown-menu li[aria-selected="true"]{background:var(--coral); color:#271006; font-weight:800;}
     .chip{
       flex:0 0 auto;
       display:inline-flex;
@@ -1015,7 +1057,7 @@
       .segmented{display:none;}
       .filters-shell{top:73px; padding:10px 28px 12px;}
       .filters-row{max-width:560px;}
-      .filter-select{max-width:220px;}
+      .dropdown{max-width:220px; flex:0 1 220px;}
       .workspace{
         height:calc(100dvh - 132px);
         display:grid;
@@ -1109,14 +1151,22 @@
 
     <section class="filters-shell" aria-label="Filtros de planes">
       <div class="filters-row">
-        <label class="sr-only" for="dateFilterSelect">Filtrar por fecha</label>
-        <select class="filter-select" id="dateFilterSelect" aria-label="Filtrar por fecha">
-          <option value="hoy">Hoy</option>
-          <option value="semana">Esta semana</option>
-          <option value="todos">Próximos</option>
-        </select>
-        <label class="sr-only" for="categoryFilterSelect">Filtrar por categoría</label>
-        <select class="filter-select" id="categoryFilterSelect" aria-label="Filtrar por categoría"></select>
+        <div class="dropdown" id="dateFilterDropdown">
+          <button type="button" class="dropdown-btn" id="dateFilterBtn" aria-haspopup="listbox" aria-expanded="false">
+            <span id="dateFilterLabel">Hoy</span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+          </button>
+          <ul class="dropdown-menu" id="dateFilterMenu" role="listbox" aria-label="Filtrar por fecha" hidden>
+            <li role="option" data-value="hoy" aria-selected="true">Hoy</li>
+            <li role="option" data-value="semana" aria-selected="false">Esta semana</li>
+            <li role="option" data-value="todos" aria-selected="false">Próximos</li>
+          </ul>
+        </div>
+        <div class="dropdown" id="categoryFilterDropdown">
+          <button type="button" class="dropdown-btn" id="categoryFilterBtn" aria-haspopup="listbox" aria-expanded="false">
+            <span id="categoryFilterLabel">Todos</span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+          </button>
+          <ul class="dropdown-menu" id="categoryFilterMenu" role="listbox" aria-label="Filtrar por categoría" hidden></ul>
+        </div>
         <button type="button" class="chip alt" id="freeToggleBtn" aria-pressed="false">
           <i class="ti ti-ticket" aria-hidden="true"></i>Gratis
         </button>
@@ -1464,16 +1514,55 @@ function showToast(message){
   toastTimer = window.setTimeout(() => els.toast.classList.remove('show'), 2400);
 }
 
+function syncDropdown(menu, label, value){
+  let matchedText = '';
+  menu.querySelectorAll('li').forEach(li => {
+    const selected = li.dataset.value === value;
+    li.setAttribute('aria-selected', String(selected));
+    if(selected) matchedText = li.textContent;
+  });
+  if(label && matchedText) label.textContent = matchedText;
+}
+
 function buildFilters(){
-  if(!els.categoryFilterSelect.options.length){
-    els.categoryFilterSelect.innerHTML = ALL_CATEGORY_CHIPS.map(cat =>
-      `<option value="${cat.id}">${cat.label}</option>`
+  if(!els.categoryFilterMenu.children.length){
+    els.categoryFilterMenu.innerHTML = ALL_CATEGORY_CHIPS.map(cat =>
+      `<li role="option" data-value="${cat.id}" aria-selected="false">${cat.label}</li>`
     ).join('');
   }
-  els.dateFilterSelect.value = state.dateFilter;
-  els.categoryFilterSelect.value = state.activeCategory;
+  syncDropdown(els.dateFilterMenu, els.dateFilterLabel, state.dateFilter);
+  syncDropdown(els.categoryFilterMenu, els.categoryFilterLabel, state.activeCategory);
   els.freeToggleBtn.classList.toggle('active', state.freeOnly);
   els.freeToggleBtn.setAttribute('aria-pressed', state.freeOnly);
+}
+
+const dropdownClosers = [];
+
+function closeAllDropdowns(){
+  dropdownClosers.forEach(close => close());
+}
+
+function initDropdown(btn, menu, onSelect){
+  function close(){
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+  }
+  function open(){
+    closeAllDropdowns();
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+  }
+  btn.addEventListener('click', event => {
+    event.stopPropagation();
+    if(menu.hidden) open(); else close();
+  });
+  menu.addEventListener('click', event => {
+    const li = event.target.closest('[data-value]');
+    if(!li) return;
+    onSelect(li.dataset.value);
+    close();
+  });
+  dropdownClosers.push(close);
 }
 
 function getFilteredEvents(){
@@ -2297,14 +2386,19 @@ function bindEvents(){
     if(card) highlightPin(card.dataset.cardId, false);
   });
 
-  els.dateFilterSelect.addEventListener('change', () => {
-    state.dateFilter = els.dateFilterSelect.value;
+  initDropdown(els.dateFilterBtn, els.dateFilterMenu, value => {
+    state.dateFilter = value;
     render();
   });
 
-  els.categoryFilterSelect.addEventListener('change', () => {
-    state.activeCategory = els.categoryFilterSelect.value;
+  initDropdown(els.categoryFilterBtn, els.categoryFilterMenu, value => {
+    state.activeCategory = value;
     render();
+  });
+
+  document.addEventListener('click', closeAllDropdowns);
+  document.addEventListener('keydown', event => {
+    if(event.key === 'Escape') closeAllDropdowns();
   });
 
   els.freeToggleBtn.addEventListener('click', () => {
@@ -2379,8 +2473,12 @@ function cacheElements(){
   els.accountBtn = document.getElementById('accountBtn');
   els.searchInput = document.getElementById('searchInput');
   els.clearSearchBtn = document.getElementById('clearSearchBtn');
-  els.dateFilterSelect = document.getElementById('dateFilterSelect');
-  els.categoryFilterSelect = document.getElementById('categoryFilterSelect');
+  els.dateFilterBtn = document.getElementById('dateFilterBtn');
+  els.dateFilterMenu = document.getElementById('dateFilterMenu');
+  els.dateFilterLabel = document.getElementById('dateFilterLabel');
+  els.categoryFilterBtn = document.getElementById('categoryFilterBtn');
+  els.categoryFilterMenu = document.getElementById('categoryFilterMenu');
+  els.categoryFilterLabel = document.getElementById('categoryFilterLabel');
   els.freeToggleBtn = document.getElementById('freeToggleBtn');
   els.workspace = document.getElementById('workspace');
   els.mapPane = document.getElementById('mapPane');
