@@ -161,6 +161,18 @@
     color:var(--bg);
     border-color:var(--text);
   }
+  .filter-chip-today{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    margin-right:6px;
+  }
+  .filter-chip-today i{font-size:14px;}
+  .filter-chip-today.active{
+    background:var(--coral);
+    color:#241208;
+    border-color:var(--coral);
+  }
 
   /* ---------- MAIN ---------- */
   .main{flex:1; position:relative;}
@@ -786,6 +798,7 @@ let userLocation = null;
 let map, markersLayer;
 let formMap, formMarker;
 let activeFilter = 'todos';
+let showTodayOnly = true;
 let currentView = 'mapa';
 let events = [];
 let interactions = {};
@@ -803,6 +816,13 @@ function haversine(lat1, lon1, lat2, lon2){
 function fmtDist(km){
   if(km < 1) return Math.round(km*1000) + ' m';
   return km.toFixed(1).replace('.0','') + ' km';
+}
+
+function todayStr(){
+  const d = new Date();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 function fmtDate(dateStr){
@@ -853,10 +873,16 @@ function showToast(msg){
 function buildFilters(){
   const wrap = document.getElementById('filters');
   const chips = [{id:'todos', label:'Todos'}, ...CATEGORIES];
-  wrap.innerHTML = chips.map(c =>
+  const todayChip = `<button type="button" class="filter-chip filter-chip-today${showTodayOnly?' active':''}" id="todayToggle" aria-pressed="${showTodayOnly}"><i class="ti ti-calendar-event"></i>Hoy</button>`;
+  wrap.innerHTML = todayChip + chips.map(c =>
     `<button type="button" class="filter-chip${c.id===activeFilter?' active':''}" data-filter="${c.id}" aria-pressed="${c.id===activeFilter}">${c.label}</button>`
   ).join('');
-  wrap.querySelectorAll('.filter-chip').forEach(btn => {
+  document.getElementById('todayToggle').addEventListener('click', () => {
+    showTodayOnly = !showTodayOnly;
+    buildFilters();
+    render();
+  });
+  wrap.querySelectorAll('.filter-chip[data-filter]').forEach(btn => {
     btn.addEventListener('click', () => {
       activeFilter = btn.dataset.filter;
       buildFilters();
@@ -867,6 +893,10 @@ function buildFilters(){
 
 function getFilteredEvents(){
   let list = activeFilter === 'todos' ? events.slice() : events.filter(e => e.category === activeFilter);
+  if(showTodayOnly){
+    const today = todayStr();
+    list = list.filter(e => e.date === today);
+  }
   list = list.map(e => {
     const dist = userLocation ? haversine(userLocation.lat, userLocation.lng, e.lat, e.lng) : null;
     return {...e, _dist: dist};
@@ -953,11 +983,13 @@ function renderList(){
   const list = getFilteredEvents();
 
   if(list.length === 0){
+    const msg = showTodayOnly ? 'No hay planes para hoy en esta categoría' : 'No hay planes en esta categoría todavía';
+    const sub = showTodayOnly ? 'Tocá "Hoy" para ver todas las fechas' : 'Probá otro filtro o agregá el primero';
     wrap.innerHTML = `
       <div class="empty-state">
         <i class="ti ti-map-pin-off"></i>
-        <p>No hay planes en esta categoría todavía</p>
-        <div class="sub">Probá otro filtro o agregá el primero</div>
+        <p>${msg}</p>
+        <div class="sub">${sub}</div>
       </div>`;
     return;
   }
@@ -1124,7 +1156,7 @@ function openForm(){
       <div class="field-row">
         <div class="field">
           <label>Fecha</label>
-          <input type="date" id="f-date" required>
+          <input type="date" id="f-date" min="${todayStr()}" required>
         </div>
         <div class="field">
           <label>Hora</label>
@@ -1240,21 +1272,34 @@ function bindAddressGeocoding(){
   }
 }
 
+function isValidImageUrl(url){
+  return /^https?:\/\//i.test(url);
+}
+
 function handleSubmit(e){
   e.preventDefault();
+
+  const dateVal = document.getElementById('f-date').value;
+  if(dateVal < todayStr()){
+    showToast('La fecha no puede ser anterior a hoy');
+    return;
+  }
+
   const pinPos = formMarker.getLatLng();
+  const imgInput = document.getElementById('f-img').value.trim();
+  const img = imgInput && isValidImageUrl(imgInput) ? imgInput : 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&q=70';
 
   const newEvent = {
     id: uid(),
     title: document.getElementById('f-title').value.trim(),
     category: document.getElementById('f-category').value,
     price: document.getElementById('f-price').value.trim(),
-    date: document.getElementById('f-date').value,
+    date: dateVal,
     time: document.getElementById('f-time').value,
     address: document.getElementById('f-address').value.trim(),
     organizer: document.getElementById('f-organizer').value.trim(),
     desc: document.getElementById('f-desc').value.trim(),
-    img: document.getElementById('f-img').value.trim() || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&q=70',
+    img,
     lat: pinPos.lat,
     lng: pinPos.lng
   };
