@@ -178,22 +178,14 @@
       flex:0 0 auto;
     }
     .account-btn.logged-in{color:var(--mint); border-color:var(--mint);}
-    .toolbar-top{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:10px;
-    }
-    .intro-copy{margin:0; flex:1 1 auto; min-width:0; color:var(--muted); font-size:13px; line-height:1.4;}
-    .intro-copy strong{color:var(--text); font-weight:700;}
-
     .search-row{
-      display:grid;
-      grid-template-columns:1fr auto;
+      display:flex;
+      align-items:center;
       gap:8px;
       margin-bottom:12px;
     }
+    .search-row .search-box{flex:1 1 auto; min-width:0;}
+    .search-row .location-btn{flex:0 0 auto;}
     .search-box{
       position:relative;
       display:flex;
@@ -1052,19 +1044,10 @@
       .app{height:100dvh; overflow:hidden;}
       .app-header{padding:16px 28px 14px;}
       .brand-name{font-size:23px;}
-      .filters-shell{
-        display:grid;
-        grid-template-columns:1fr minmax(360px,420px);
-        align-items:center;
-        gap:12px 18px;
-        padding:14px 28px;
-      }
-      .toolbar-top{margin:0; flex-direction:column; align-items:flex-start;}
-      .intro-copy{max-width:320px; font-size:13px;}
-      .location-btn{margin-top:8px;}
-      .search-row{margin:0; grid-template-columns:1fr auto;}
+      .filters-shell{padding:14px 28px;}
+      .search-row{max-width:560px;}
       .segmented{display:none;}
-      .filters-row{grid-column:1/-1; margin:0; max-width:none;}
+      .filters-row{max-width:560px;}
       .dropdown{max-width:220px; flex:0 1 220px;}
       .workspace{
         height:calc(100dvh - 192px);
@@ -1108,7 +1091,6 @@
       .location-btn span{display:none;}
       .location-btn{width:46px; justify-content:center; padding:0; border-radius:16px;}
       .brand-name{font-size:18px;}
-      .intro-copy{font-size:12px;}
       .event-card{grid-template-columns:84px 1fr;}
       .event-img{width:84px; height:104px;}
       .event-title{font-size:15px;}
@@ -1140,14 +1122,10 @@
     </header>
 
     <section class="filters-shell" aria-label="Buscar, filtrar y cambiar vista">
-      <div class="toolbar-top">
-        <p class="intro-copy"><strong>Encontrá qué hacer cerca tuyo.</strong> Mapa, lista, filtros rápidos y planes guardados en este dispositivo.</p>
+      <div class="search-row">
         <button type="button" class="location-btn" id="locationBtn" aria-label="Usar mi ubicación">
           <i class="ti ti-current-location"></i><span>Usar ubicación</span>
         </button>
-      </div>
-
-      <div class="search-row">
         <label class="search-box" for="searchInput">
           <i class="ti ti-search" aria-hidden="true"></i>
           <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar cine, ferias, Palermo..." />
