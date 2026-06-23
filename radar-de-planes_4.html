@@ -3,10 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Descubrí planes y eventos cerca de tuyo en Buenos Aires: cine, música, ferias, talleres y más.">
+<meta name="theme-color" content="#1A1B23">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%23FF6B4A%22/></svg>">
 <title>Radar de Planes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  *:focus-visible{
+    outline:2px solid var(--mint);
+    outline-offset:2px;
+  }
 
   :root{
     --bg: #1A1B23;
@@ -241,6 +251,7 @@
     cursor:pointer;
     transition:border-color 0.15s ease;
   }
+  .ticket:hover{border-color:var(--border-strong);}
   .ticket:active{transform:scale(0.99);}
   .ticket.ticket-flash{
     border-color:var(--coral);
@@ -637,8 +648,8 @@
       <div class="loc-tag" id="locTag">Buenos Aires</div>
     </div>
     <div class="view-toggle">
-      <button class="active" data-view="mapa"><i class="ti ti-map-2"></i>Mapa</button>
-      <button data-view="lista"><i class="ti ti-list"></i>Lista</button>
+      <button type="button" class="active" data-view="mapa" aria-pressed="true"><i class="ti ti-map-2"></i>Mapa</button>
+      <button type="button" data-view="lista" aria-pressed="false"><i class="ti ti-list"></i>Lista</button>
     </div>
   </div>
 
@@ -650,7 +661,7 @@
     </div>
     <div class="list-view" id="listView" style="display:none;"></div>
 
-    <button class="fab" id="addBtn" aria-label="Agregar actividad"><i class="ti ti-plus"></i></button>
+    <button type="button" class="fab" id="addBtn" aria-label="Agregar actividad"><i class="ti ti-plus"></i></button>
     <div class="toast" id="toast"></div>
   </div>
 
@@ -665,8 +676,6 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
 
 <script>
 const CATEGORIES = [
@@ -845,7 +854,7 @@ function buildFilters(){
   const wrap = document.getElementById('filters');
   const chips = [{id:'todos', label:'Todos'}, ...CATEGORIES];
   wrap.innerHTML = chips.map(c =>
-    `<button class="filter-chip${c.id===activeFilter?' active':''}" data-filter="${c.id}">${c.label}</button>`
+    `<button type="button" class="filter-chip${c.id===activeFilter?' active':''}" data-filter="${c.id}" aria-pressed="${c.id===activeFilter}">${c.label}</button>`
   ).join('');
   wrap.querySelectorAll('.filter-chip').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -956,8 +965,8 @@ function renderList(){
   wrap.innerHTML = list.map(ev => {
     const distTxt = ev._dist != null ? fmtDist(ev._dist) : '—';
     return `
-    <div class="ticket" data-id="${ev.id}">
-      <img class="ticket-img" src="${ev.img}" alt="" loading="lazy" onerror="this.style.display='none'">
+    <div class="ticket" data-id="${ev.id}" role="button" tabindex="0" aria-label="Ver detalle de ${escapeHtml(ev.title)}">
+      <img class="ticket-img" src="${ev.img}" alt="${escapeHtml(ev.title)}" loading="lazy" onerror="this.style.display='none'">
       <div class="ticket-body">
         <div class="ticket-top-row">
           <span class="ticket-cat">${catInfo(ev.category).label}</span>
@@ -975,6 +984,12 @@ function renderList(){
 
   wrap.querySelectorAll('.ticket').forEach(card => {
     card.addEventListener('click', () => openDetail(card.dataset.id));
+    card.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        openDetail(card.dataset.id);
+      }
+    });
     card.addEventListener('mouseenter', () => highlightPin(card.dataset.id, true));
     card.addEventListener('mouseleave', () => highlightPin(card.dataset.id, false));
   });
@@ -1004,9 +1019,9 @@ function openDetail(id){
   const sheet = document.getElementById('detailSheet');
 
   sheet.innerHTML = `
-    <button class="sheet-close" id="closeDetail"><i class="ti ti-x"></i></button>
+    <button type="button" class="sheet-close" id="closeDetail"><i class="ti ti-x"></i></button>
     <div class="sheet-handle"></div>
-    <img class="detail-img" src="${ev.img}" alt="" onerror="this.style.display='none'">
+    <img class="detail-img" src="${ev.img}" alt="${escapeHtml(ev.title)}" onerror="this.style.display='none'">
     <span class="detail-cat">${catInfo(ev.category).label}</span>
     <h2 class="detail-title">${escapeHtml(ev.title)}</h2>
 
@@ -1028,17 +1043,17 @@ function openDetail(id){
     </div>
 
     <div class="action-row">
-      <button class="action-btn ${interacted==='interesa'?'active-coral':''}" id="btnInteresa">
+      <button type="button" class="action-btn ${interacted==='interesa'?'active-coral':''}" id="btnInteresa">
         <i class="ti ti-star"></i>Me interesa
       </button>
-      <button class="action-btn ${interacted==='voy'?'active-mint':''}" id="btnVoy">
+      <button type="button" class="action-btn ${interacted==='voy'?'active-mint':''}" id="btnVoy">
         <i class="ti ti-check"></i>Voy
       </button>
     </div>
     <div class="secondary-row">
-      <button class="action-btn" id="btnComoLlegar"><i class="ti ti-route"></i>Cómo llegar</button>
-      <button class="action-btn" id="btnCompartir"><i class="ti ti-share-2"></i>Compartir</button>
-      <button class="action-btn" id="btnReportar" style="flex:0 0 44px;"><i class="ti ti-flag"></i></button>
+      <button type="button" class="action-btn" id="btnComoLlegar"><i class="ti ti-route"></i>Cómo llegar</button>
+      <button type="button" class="action-btn" id="btnCompartir"><i class="ti ti-share-2"></i>Compartir</button>
+      <button type="button" class="action-btn" id="btnReportar" style="flex:0 0 44px;"><i class="ti ti-flag"></i></button>
     </div>
   `;
 
@@ -1046,7 +1061,7 @@ function openDetail(id){
   document.getElementById('btnInteresa').onclick = () => toggleInteraction(ev.id, 'interesa');
   document.getElementById('btnVoy').onclick = () => toggleInteraction(ev.id, 'voy');
   document.getElementById('btnComoLlegar').onclick = () => {
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${ev.lat},${ev.lng}`, '_blank');
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${ev.lat},${ev.lng}`, '_blank', 'noopener,noreferrer');
   };
   document.getElementById('btnCompartir').onclick = () => {
     const text = `${ev.title} — ${fmtDate(ev.date)} ${ev.time} en ${ev.address}`;
@@ -1086,7 +1101,7 @@ function openForm(){
   const catOptions = CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
 
   sheet.innerHTML = `
-    <button class="sheet-close" id="closeForm"><i class="ti ti-x"></i></button>
+    <button type="button" class="sheet-close" id="closeForm"><i class="ti ti-x"></i></button>
     <div class="sheet-handle"></div>
     <h2 class="form-title">Sumar un plan</h2>
     <p class="form-sub">Cargá tu actividad para que aparezca en el mapa</p>
@@ -1254,7 +1269,9 @@ function handleSubmit(e){
 function setView(view){
   currentView = view;
   document.querySelectorAll('.view-toggle button').forEach(b => {
-    b.classList.toggle('active', b.dataset.view === view);
+    const active = b.dataset.view === view;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', active);
   });
   if(!isDesktop()){
     document.getElementById('mapWrap').style.display = view === 'mapa' ? 'block' : 'none';
