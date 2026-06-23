@@ -217,11 +217,21 @@
       overflow:hidden;
     }
     .search-box i{
-      position:absolute;
-      left:14px;
       color:var(--faint);
       font-size:18px;
-      pointer-events:none;
+    }
+    .search-toggle-btn{
+      position:absolute;
+      left:6px;
+      top:50%;
+      transform:translateY(-50%);
+      width:34px;height:34px;
+      display:grid;
+      place-items:center;
+      background:transparent;
+      border:0;
+      color:var(--faint);
+      z-index:1;
     }
     .search-box input{
       width:100%;
@@ -283,6 +293,7 @@
     }
     .rail::-webkit-scrollbar{display:none;}
     .rail + .rail{margin-top:8px;}
+    .mobile-category-chips{display:none;}
     .filters-row{
       display:flex;
       flex-wrap:wrap;
@@ -461,6 +472,7 @@
       transition:transform .15s ease, box-shadow .15s ease;
     }
     .pin i{color:var(--ink); font-size:15px;}
+    .pin-emoji{font-size:15px; line-height:1; filter:grayscale(.15);}
     .pin.going{background:var(--mint); box-shadow:0 8px 20px rgba(0,0,0,.35), 0 0 0 5px rgba(182,255,59,.16);}
     .pin.interested{background:var(--yellow); box-shadow:0 8px 20px rgba(0,0,0,.35), 0 0 0 5px rgba(255,79,216,.16);}
     .pin.going i,.pin.interested i{color:var(--ink);}
@@ -1160,6 +1172,23 @@
       .toast.show{transform:translate(-50%,0);}
     }
 
+    @media (max-width:979px){
+      #categoryFilterDropdown{display:none;}
+      .mobile-category-chips{
+        display:flex;
+        gap:8px;
+        overflow-x:auto;
+        padding-bottom:2px;
+        margin-bottom:10px;
+        scrollbar-width:none;
+      }
+      .mobile-category-chips::-webkit-scrollbar{display:none;}
+      .mobile-category-chips .chip{flex:0 0 auto;}
+      .search-box:not(.expanded){width:38px; min-width:38px; flex:0 0 auto; border-color:transparent; background:transparent;}
+      .search-box:not(.expanded) input{width:0; padding:0; opacity:0;}
+      .search-box.expanded{flex:1 1 160px;}
+    }
+
     @media (max-width:430px){
       .location-btn span{display:none;}
       .location-btn{width:46px; justify-content:center; padding:0; border-radius:16px;}
@@ -1200,6 +1229,8 @@
         <button type="button" data-view="lista" aria-pressed="false"><i class="ti ti-list"></i>Lista</button>
       </nav>
 
+      <div class="mobile-category-chips" id="mobileCategoryChips" role="group" aria-label="Filtrar por categoría"></div>
+
       <div class="filters-row">
         <div class="dropdown" id="dateFilterDropdown">
           <button type="button" class="dropdown-btn" id="dateFilterBtn" aria-haspopup="listbox" aria-expanded="false">
@@ -1224,10 +1255,13 @@
           <button type="button" class="location-btn" id="locationBtn" aria-label="Usar mi ubicación" aria-pressed="false">
             <i class="ti ti-current-location"></i><span>Usar ubicación</span>
           </button>
-          <label class="search-box" for="searchInput">
-            <i class="ti ti-search" aria-hidden="true"></i>
+          <div class="search-box" id="searchBox">
+            <button type="button" class="search-toggle-btn" id="searchToggleBtn" aria-label="Buscar planes" aria-expanded="false">
+              <i class="ti ti-search" aria-hidden="true"></i>
+            </button>
+            <label class="sr-only" for="searchInput">Buscar planes, zonas o categorías</label>
             <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar planes, zonas o categorías" />
-          </label>
+          </div>
           <button type="button" class="icon-btn" id="clearSearchBtn" aria-label="Limpiar búsqueda" hidden><span class="x-mark" aria-hidden="true">&times;</span></button>
         </div>
       </div>
@@ -1309,21 +1343,21 @@ const BA_CENTER = [-34.6037, -58.3816];
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=72';
 
 const CATEGORIES = [
-  {id:'cine', label:'Cine', icon:'ti-movie'},
-  {id:'musica', label:'Música', icon:'ti-music'},
-  {id:'teatro', label:'Teatro', icon:'ti-theater'},
-  {id:'expo', label:'Expos', icon:'ti-photo'},
-  {id:'feria', label:'Ferias', icon:'ti-tent'},
-  {id:'gastro', label:'Gastro', icon:'ti-tools-kitchen-2'},
-  {id:'taller', label:'Talleres', icon:'ti-tool'},
-  {id:'charla', label:'Charlas', icon:'ti-microphone-2'},
-  {id:'lectura', label:'Lectura', icon:'ti-book'},
-  {id:'juegos', label:'Juegos', icon:'ti-dice-5'},
-  {id:'deporte', label:'Deporte', icon:'ti-ball-football'},
-  {id:'social', label:'Social', icon:'ti-users'}
+  {id:'cine', label:'Cine', icon:'ti-movie', emoji:'🎬'},
+  {id:'musica', label:'Música', icon:'ti-music', emoji:'🎵'},
+  {id:'teatro', label:'Teatro', icon:'ti-theater', emoji:'🎭'},
+  {id:'expo', label:'Expos', icon:'ti-photo', emoji:'🖼️'},
+  {id:'feria', label:'Ferias', icon:'ti-tent', emoji:'🎪'},
+  {id:'gastro', label:'Gastro', icon:'ti-tools-kitchen-2', emoji:'🍽️'},
+  {id:'taller', label:'Talleres', icon:'ti-tool', emoji:'🛠️'},
+  {id:'charla', label:'Charlas', icon:'ti-microphone-2', emoji:'🎤'},
+  {id:'lectura', label:'Lectura', icon:'ti-book', emoji:'📚'},
+  {id:'juegos', label:'Juegos', icon:'ti-dice-5', emoji:'🎲'},
+  {id:'deporte', label:'Deporte', icon:'ti-ball-football', emoji:'⚽'},
+  {id:'social', label:'Social', icon:'ti-users', emoji:'👥'}
 ];
 
-const ALL_CATEGORY_CHIPS = [{id:'todos', label:'Todos', icon:'ti-sparkles'}, ...CATEGORIES];
+const ALL_CATEGORY_CHIPS = [{id:'todos', label:'Todos', icon:'ti-sparkles', emoji:'✨'}, ...CATEGORIES];
 
 const SEED_EVENTS = [
   {
@@ -1523,7 +1557,7 @@ function fmtDist(km){
 }
 
 function catInfo(id){
-  return CATEGORIES.find(cat => cat.id === id) || {id, label:id, icon:'ti-tag'};
+  return CATEGORIES.find(cat => cat.id === id) || {id, label:id, icon:'ti-tag', emoji:'📍'};
 }
 
 function escapeHtml(value){
@@ -1604,6 +1638,11 @@ function syncCategoryDropdown(){
     label = active.length === 1 ? catInfo(active[0]).label : `${active.length} categorías`;
   }
   els.categoryFilterLabel.textContent = label;
+  els.mobileCategoryChips.querySelectorAll('[data-value]').forEach(chip => {
+    const selected = active.includes(chip.dataset.value);
+    chip.classList.toggle('active', selected);
+    chip.setAttribute('aria-pressed', String(selected));
+  });
 }
 
 function toggleCategory(value){
@@ -1620,6 +1659,11 @@ function buildFilters(){
   if(!els.categoryFilterMenu.children.length){
     els.categoryFilterMenu.innerHTML = ALL_CATEGORY_CHIPS.map(cat =>
       `<li role="option" data-value="${cat.id}" aria-selected="false">${cat.label}</li>`
+    ).join('');
+  }
+  if(!els.mobileCategoryChips.children.length){
+    els.mobileCategoryChips.innerHTML = ALL_CATEGORY_CHIPS.map(cat =>
+      `<button type="button" class="chip" data-value="${cat.id}" aria-pressed="false"><span aria-hidden="true">${cat.emoji}</span>${cat.label}</button>`
     ).join('');
   }
   syncDropdown(els.dateFilterMenu, els.dateFilterLabel, state.dateFilter);
@@ -1713,7 +1757,7 @@ function makeEventIcon(ev){
   const activeClass = state.selectedId === ev.id ? 'active' : '';
   return L.divIcon({
     className:'',
-    html:`<div class="pin ${statusClass} ${activeClass}" id="pin-${ev.id}"><i class="ti ${catInfo(ev.category).icon}"></i></div>`,
+    html:`<div class="pin ${statusClass} ${activeClass}" id="pin-${ev.id}"><span class="pin-emoji" aria-hidden="true">${catInfo(ev.category).emoji}</span></div>`,
     iconSize:[34,34],
     iconAnchor:[17,17],
     popupAnchor:[0,-22]
@@ -2523,6 +2567,27 @@ function bindEvents(){
     render();
   });
 
+  els.mobileCategoryChips.addEventListener('click', event => {
+    const chip = event.target.closest('[data-value]');
+    if(!chip) return;
+    toggleCategory(chip.dataset.value);
+    render();
+  });
+
+  els.searchToggleBtn.addEventListener('click', event => {
+    event.stopPropagation();
+    const expanded = els.searchBox.classList.toggle('expanded');
+    els.searchToggleBtn.setAttribute('aria-expanded', String(expanded));
+    els.searchInput.focus();
+  });
+
+  document.addEventListener('click', event => {
+    if(els.searchBox.classList.contains('expanded') && !state.query && !els.searchBox.contains(event.target)){
+      els.searchBox.classList.remove('expanded');
+      els.searchToggleBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
   document.querySelectorAll('[data-view]').forEach(btn => {
     btn.addEventListener('click', () => setView(btn.dataset.view));
   });
@@ -2590,6 +2655,9 @@ function cacheElements(){
   els.accountBtn = document.getElementById('accountBtn');
   els.searchInput = document.getElementById('searchInput');
   els.clearSearchBtn = document.getElementById('clearSearchBtn');
+  els.searchBox = document.getElementById('searchBox');
+  els.searchToggleBtn = document.getElementById('searchToggleBtn');
+  els.mobileCategoryChips = document.getElementById('mobileCategoryChips');
   els.dateFilterBtn = document.getElementById('dateFilterBtn');
   els.dateFilterMenu = document.getElementById('dateFilterMenu');
   els.dateFilterLabel = document.getElementById('dateFilterLabel');
