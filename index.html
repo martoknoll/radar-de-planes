@@ -998,6 +998,7 @@ let showFreeOnly = false;
 let searchQuery = '';
 let sortOrder = 'asc';
 let currentUser = null;
+let passwordRecoveryMode = false;
 let userPreferences = new Set();
 let currentView = 'mapa';
 let events = [];
@@ -1690,6 +1691,26 @@ function getMyPlans(){
 function renderAccountSheet(){
   const sheet = document.getElementById('accountSheet');
 
+  if(passwordRecoveryMode){
+    sheet.innerHTML = `
+      <button type="button" class="sheet-close" id="closeAccount"><i class="ti ti-x"></i></button>
+      <div class="sheet-handle"></div>
+      <h2 class="form-title">Elegí una nueva contraseña</h2>
+      <p class="form-sub">Definí la contraseña que vas a usar para entrar de ahora en más.</p>
+      <form id="newPasswordForm">
+        <div class="field">
+          <label>Contraseña nueva</label>
+          <input type="password" id="newPassword" placeholder="Mínimo 6 caracteres" minlength="6" required>
+        </div>
+        <button type="submit" class="submit-btn">Guardar contraseña</button>
+        <p class="form-note" id="newPasswordStatus"></p>
+      </form>
+    `;
+    document.getElementById('newPasswordForm').addEventListener('submit', handleSetNewPassword);
+    document.getElementById('closeAccount').onclick = closeAccountSheet;
+    return;
+  }
+
   if(!currentUser){
     sheet.innerHTML = `
       <button type="button" class="sheet-close" id="closeAccount"><i class="ti ti-x"></i></button>
@@ -1807,6 +1828,21 @@ async function handleAuthSubmit(e, getMode){
   }
 }
 
+async function handleSetNewPassword(e){
+  e.preventDefault();
+  const password = document.getElementById('newPassword').value;
+  const status = document.getElementById('newPasswordStatus');
+  status.textContent = 'Guardando...';
+  const { error } = await supabaseClient.auth.updateUser({ password });
+  if(error){
+    status.textContent = 'No se pudo guardar la contraseña. Probá de nuevo.';
+    return;
+  }
+  passwordRecoveryMode = false;
+  showToast('Contraseña actualizada');
+  renderAccountSheet();
+}
+
 async function init(){
   loadData();
   buildFilters();
@@ -1846,8 +1882,13 @@ async function init(){
   }
   updateAccountBtn();
 
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
     currentUser = session?.user || null;
+    if(event === 'PASSWORD_RECOVERY'){
+      passwordRecoveryMode = true;
+      openAccountSheet();
+      return;
+    }
     if(currentUser){
       await ensureProfile();
       await loadPreferences();
