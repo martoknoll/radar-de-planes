@@ -204,14 +204,8 @@
       flex:0 0 auto;
     }
     .account-btn.logged-in{color:var(--mint); border-color:var(--mint);}
-    .search-row{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      margin-bottom:12px;
-    }
-    .search-row .search-box{flex:1 1 auto; min-width:0;}
-    .search-row .location-btn{flex:0 0 auto;}
+    .user-mark{position:relative; width:16px; height:16px; border-radius:50%; border:1.5px solid currentColor; flex:0 0 auto;}
+    .user-mark::after{content:''; position:absolute; left:50%; top:50%; width:6px; height:6px; border-radius:50%; background:currentColor; transform:translate(-50%,-50%);}
     .search-box{
       position:relative;
       display:flex;
@@ -306,6 +300,7 @@
     }
     .filters-search .search-box{flex:1 1 auto; min-width:0; min-height:38px;}
     .filters-search .search-box input{height:38px;}
+    .filters-search .location-btn{flex:0 0 auto; white-space:nowrap;}
     .dropdown{
       position:relative;
       flex:1 1 0;
@@ -765,6 +760,7 @@
     }
     .fab:active{transform:scale(.96);}
     .fab-label{display:none;}
+    .plus-mark{font-size:30px; line-height:1; font-weight:600;}
 
     /* ---------- Sheets ---------- */
     .sheet-overlay{
@@ -818,6 +814,7 @@
       color:var(--text);
       backdrop-filter:blur(14px);
     }
+    .x-mark{font-size:20px; line-height:1; font-weight:600;}
 
     .detail-hero{position:relative; padding:14px 14px 0;}
     .detail-img{
@@ -913,7 +910,7 @@
     .main-action-row,
     .minor-action-row{display:grid; gap:10px;}
     .main-action-row{grid-template-columns:1fr 1fr;}
-    .minor-action-row{grid-template-columns:1fr 1fr 46px;}
+    .minor-action-row{grid-template-columns:1fr 1fr 1fr;}
     .primary-btn,
     .secondary-btn,
     .ghost-btn{
@@ -1148,12 +1145,14 @@
         min-width:184px;
         height:56px;
         grid-auto-flow:column;
+        justify-content:center;
+        align-items:center;
         gap:8px;
         padding:0 18px;
         border-radius:18px;
         font-size:22px;
       }
-      .fab-label{display:block; font-size:14px; font-weight:950;}
+      .fab-label{display:block; font-size:14px; font-weight:950; text-align:center;}
       .sheet-overlay{align-items:center; padding:24px;}
       .sheet{border-radius:28px; border:1px solid var(--border-strong); max-height:88dvh;}
       .detail-img{height:260px;}
@@ -1190,18 +1189,12 @@
           </div>
         </div>
         <div class="header-actions">
-          <button type="button" class="account-btn" id="accountBtn" aria-label="Mi cuenta"><i class="ti ti-user-circle"></i></button>
+          <button type="button" class="account-btn" id="accountBtn" aria-label="Mi cuenta"><span class="user-mark" aria-hidden="true"></span></button>
         </div>
       </div>
     </header>
 
     <section class="filters-shell" aria-label="Buscar, filtrar y cambiar vista">
-      <div class="search-row">
-        <button type="button" class="location-btn" id="locationBtn" aria-label="Usar mi ubicación" aria-pressed="false">
-          <i class="ti ti-current-location"></i><span>Usar ubicación</span>
-        </button>
-      </div>
-
       <nav class="segmented" aria-label="Cambiar vista">
         <button type="button" class="active" data-view="mapa" aria-pressed="true"><i class="ti ti-map-2"></i>Mapa</button>
         <button type="button" data-view="lista" aria-pressed="false"><i class="ti ti-list"></i>Lista</button>
@@ -1228,11 +1221,14 @@
           <i class="ti ti-ticket" aria-hidden="true"></i>Gratis
         </button>
         <div class="filters-search">
+          <button type="button" class="location-btn" id="locationBtn" aria-label="Usar mi ubicación" aria-pressed="false">
+            <i class="ti ti-current-location"></i><span>Usar ubicación</span>
+          </button>
           <label class="search-box" for="searchInput">
             <i class="ti ti-search" aria-hidden="true"></i>
             <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar planes, zonas o categorías" />
           </label>
-          <button type="button" class="icon-btn" id="clearSearchBtn" aria-label="Limpiar búsqueda" hidden><i class="ti ti-x"></i></button>
+          <button type="button" class="icon-btn" id="clearSearchBtn" aria-label="Limpiar búsqueda" hidden><span class="x-mark" aria-hidden="true">&times;</span></button>
         </div>
       </div>
     </section>
@@ -1278,7 +1274,7 @@
       </section>
 
       <button type="button" class="fab" id="addEventBtn" aria-label="Sumar un plan">
-        <i class="ti ti-plus"></i><span class="fab-label">Sumar plan</span>
+        <span class="plus-mark" aria-hidden="true">+</span><span class="fab-label">Sumar plan</span>
       </button>
     </main>
   </div>
@@ -1684,7 +1680,7 @@ function initMap(){
     attribution:'&copy; OpenStreetMap &copy; CARTO',
     maxZoom:19
   }).addTo(map);
-  L.control.zoom({position:'bottomright'}).addTo(map);
+  L.control.zoom({position:'topright'}).addTo(map);
   markersLayer = L.layerGroup().addTo(map);
 }
 
@@ -1944,7 +1940,7 @@ function openDetail(id){
   const cat = catInfo(ev.category);
 
   els.detailSheet.innerHTML = `
-    <button type="button" class="sheet-close" id="closeDetailBtn" aria-label="Cerrar detalle"><i class="ti ti-x"></i></button>
+    <button type="button" class="sheet-close" id="closeDetailBtn" aria-label="Cerrar detalle"><span class="x-mark" aria-hidden="true">&times;</span></button>
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="detail-hero">
       <img class="detail-img" src="${escapeHtml(ev.img || FALLBACK_IMG)}" alt="${escapeHtml(ev.title)}" onerror="this.src='${FALLBACK_IMG}'">
@@ -1972,7 +1968,7 @@ function openDetail(id){
       <div class="minor-action-row">
         <button type="button" class="secondary-btn" id="routeBtn"><i class="ti ti-route"></i>Cómo llegar</button>
         <button type="button" class="secondary-btn" id="shareBtn"><i class="ti ti-share-2"></i>Compartir</button>
-        <button type="button" class="secondary-btn" id="reportBtn" aria-label="Reportar este plan"><i class="ti ti-flag"></i></button>
+        <button type="button" class="secondary-btn" id="reportBtn" aria-label="Reportar este plan"><i class="ti ti-alert-triangle"></i>Reportar</button>
       </div>
     </div>
   `;
@@ -2045,7 +2041,7 @@ function closeSheet(overlay){
 function openForm(){
   const options = CATEGORIES.map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('');
   els.formSheet.innerHTML = `
-    <button type="button" class="sheet-close" id="closeFormBtn" aria-label="Cerrar formulario"><i class="ti ti-x"></i></button>
+    <button type="button" class="sheet-close" id="closeFormBtn" aria-label="Cerrar formulario"><span class="x-mark" aria-hidden="true">&times;</span></button>
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="form-content">
       <h2 class="form-title" id="formTitle">Sumar un plan</h2>
@@ -2267,7 +2263,7 @@ function renderAccountSheet(){
 
   if(passwordRecoveryMode){
     sheet.innerHTML = `
-      <button type="button" class="sheet-close" id="closeAccount" aria-label="Cerrar"><i class="ti ti-x"></i></button>
+      <button type="button" class="sheet-close" id="closeAccount" aria-label="Cerrar"><span class="x-mark" aria-hidden="true">&times;</span></button>
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="form-content">
         <h2 class="form-title" id="accountTitle">Elegí una nueva contraseña</h2>
@@ -2289,7 +2285,7 @@ function renderAccountSheet(){
 
   if(!currentUser){
     sheet.innerHTML = `
-      <button type="button" class="sheet-close" id="closeAccount" aria-label="Cerrar"><i class="ti ti-x"></i></button>
+      <button type="button" class="sheet-close" id="closeAccount" aria-label="Cerrar"><span class="x-mark" aria-hidden="true">&times;</span></button>
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="form-content">
         <h2 class="form-title" id="accountTitle">Mi cuenta</h2>
@@ -2359,7 +2355,7 @@ function renderAccountSheet(){
       : `<div class="my-plans-empty">Todavía no marcaste planes como "me interesa" o "voy".</div>`;
 
     sheet.innerHTML = `
-      <button type="button" class="sheet-close" id="closeAccount" aria-label="Cerrar"><i class="ti ti-x"></i></button>
+      <button type="button" class="sheet-close" id="closeAccount" aria-label="Cerrar"><span class="x-mark" aria-hidden="true">&times;</span></button>
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="form-content">
         <h2 class="form-title" id="accountTitle">Mi cuenta</h2>
