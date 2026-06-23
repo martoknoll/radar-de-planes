@@ -155,7 +155,6 @@
       flex:0 0 auto;
     }
     .icon-btn,
-    .location-btn,
     .account-btn,
     .chip,
     .segmented button,
@@ -175,23 +174,6 @@
       color:var(--text);
       border:1px solid var(--border);
     }
-    .location-btn{
-      min-height:38px;
-      border-radius:999px;
-      display:flex;
-      align-items:center;
-      gap:7px;
-      padding:0 12px;
-      background:rgba(247,241,232,.07);
-      color:var(--text);
-      border:1px solid var(--border);
-      font-size:12px;
-      font-weight:700;
-      white-space:nowrap;
-    }
-    .location-btn i{color:var(--mint); font-size:16px;}
-    .location-btn.active{background:rgba(182,255,59,.12); border-color:var(--mint); color:var(--mint);}
-    .location-btn.active i{color:var(--mint);}
     .account-btn{
       width:38px;height:38px;
       border-radius:14px;
@@ -278,7 +260,7 @@
     .filters-shell{
       position:sticky;
       top:var(--header-h);
-      z-index:55;
+      z-index:460;
       padding:10px 16px 12px;
       background:rgba(17,18,26,.92);
       border-bottom:1px solid var(--border);
@@ -311,7 +293,6 @@
     }
     .filters-search .search-box{flex:1 1 auto; min-width:0; min-height:38px;}
     .filters-search .search-box input{height:38px;}
-    .filters-search .location-btn{flex:0 0 auto; white-space:nowrap;}
     .dropdown{
       position:relative;
       flex:1 1 0;
@@ -341,7 +322,7 @@
       position:absolute;
       top:calc(100% + 6px);
       left:0;
-      z-index:60;
+      z-index:500;
       min-width:100%;
       max-height:240px;
       overflow-y:auto;
@@ -1190,8 +1171,6 @@
     }
 
     @media (max-width:430px){
-      .location-btn span{display:none;}
-      .location-btn{width:46px; justify-content:center; padding:0; border-radius:16px;}
       .brand-name{font-size:18px;}
       .event-card{grid-template-columns:84px 1fr;}
       .event-img{width:84px; height:104px;}
@@ -1252,9 +1231,6 @@
           <i class="ti ti-ticket" aria-hidden="true"></i>Gratis
         </button>
         <div class="filters-search">
-          <button type="button" class="location-btn" id="locationBtn" aria-label="Usar mi ubicación" aria-pressed="false">
-            <i class="ti ti-current-location"></i><span>Usar ubicación</span>
-          </button>
           <div class="search-box" id="searchBox">
             <button type="button" class="search-toggle-btn" id="searchToggleBtn" aria-label="Buscar planes" aria-expanded="false">
               <i class="ti ti-search" aria-hidden="true"></i>
@@ -1323,6 +1299,18 @@
 
   <div class="sheet-overlay" id="accountOverlay" aria-hidden="true">
     <article class="sheet" id="accountSheet" role="dialog" aria-modal="true" aria-labelledby="accountTitle"></article>
+  </div>
+
+  <div class="sheet-overlay" id="locationOverlay" aria-hidden="true">
+    <article class="sheet" id="locationSheet" role="dialog" aria-modal="true" aria-labelledby="locationModalTitle">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="form-content">
+        <h2 class="form-title" id="locationModalTitle">Activá tu ubicación</h2>
+        <p class="form-sub">La usamos para ordenar los planes por cercanía real. Si no la activás ahora, vas a tener que recargar la página para volver a intentarlo.</p>
+        <button type="button" class="submit-btn" id="activateLocationBtn">Activar ubicación</button>
+        <button type="button" class="chip alt" id="skipLocationBtn" style="width:100%; justify-content:center; margin-top:8px;">Ahora no</button>
+      </div>
+    </article>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1695,6 +1683,7 @@ function initDropdown(btn, menu, onSelect, options = {}){
     if(menu.hidden) open(); else close();
   });
   menu.addEventListener('click', event => {
+    event.stopPropagation();
     const li = event.target.closest('[data-value]');
     if(!li || li.classList.contains('disabled')) return;
     onSelect(li.dataset.value);
@@ -1907,9 +1896,6 @@ function renderLocationStatus(){
   const hasLocation = !!state.userLocation;
   els.mapStatus.hidden = hasLocation;
   els.locationLabel.textContent = hasLocation ? 'Cerca de tu ubicación' : 'Qué está pasando cerca tuyo';
-  els.locationBtn.querySelector('span').textContent = hasLocation ? 'Ubicación activa' : 'Usar ubicación';
-  els.locationBtn.classList.toggle('active', hasLocation);
-  els.locationBtn.setAttribute('aria-pressed', String(hasLocation));
   els.sortSelect.querySelector('option[value="distance"]').disabled = !hasLocation;
   if(!hasLocation && state.sortBy === 'distance'){
     state.sortBy = 'date';
@@ -1954,24 +1940,28 @@ function requestLocation(){
     showToast('Tu navegador no permite geolocalización');
     return;
   }
-  els.locationBtn.disabled = true;
-  els.locationBtn.querySelector('span').textContent = 'Buscando...';
   navigator.geolocation.getCurrentPosition(
     pos => {
       state.userLocation = {lat:pos.coords.latitude, lng:pos.coords.longitude};
       state.sortBy = 'distance';
       els.sortSelect.value = 'distance';
-      els.locationBtn.disabled = false;
       showToast('Ubicación activada. Ordenamos por cercanía.');
       render();
     },
     () => {
-      els.locationBtn.disabled = false;
       showToast('No pudimos acceder a tu ubicación');
       renderLocationStatus();
     },
     {enableHighAccuracy:true, timeout:7000, maximumAge:300000}
   );
+}
+
+function openLocationModal(){
+  openSheet(els.locationOverlay);
+}
+
+function closeLocationModal(){
+  closeSheet(els.locationOverlay);
 }
 
 function highlightPin(id, active){
@@ -2615,12 +2605,17 @@ function bindEvents(){
     render();
   });
 
-  els.locationBtn.addEventListener('click', requestLocation);
   els.mapLocationBtn.addEventListener('click', requestLocation);
   els.addEventBtn.addEventListener('click', openForm);
   els.accountBtn.addEventListener('click', openAccountSheet);
 
-  [els.detailOverlay, els.formOverlay, els.accountOverlay].forEach(overlay => {
+  els.activateLocationBtn.addEventListener('click', () => {
+    requestLocation();
+    closeLocationModal();
+  });
+  els.skipLocationBtn.addEventListener('click', closeLocationModal);
+
+  [els.detailOverlay, els.formOverlay, els.accountOverlay, els.locationOverlay].forEach(overlay => {
     overlay.addEventListener('click', event => {
       if(event.target === overlay) closeSheet(overlay);
     });
@@ -2651,7 +2646,6 @@ function debounce(fn, delay){
 function cacheElements(){
   els.app = document.getElementById('app');
   els.locationLabel = document.getElementById('locationLabel');
-  els.locationBtn = document.getElementById('locationBtn');
   els.accountBtn = document.getElementById('accountBtn');
   els.searchInput = document.getElementById('searchInput');
   els.clearSearchBtn = document.getElementById('clearSearchBtn');
@@ -2686,6 +2680,9 @@ function cacheElements(){
   els.formSheet = document.getElementById('formSheet');
   els.accountOverlay = document.getElementById('accountOverlay');
   els.accountSheet = document.getElementById('accountSheet');
+  els.locationOverlay = document.getElementById('locationOverlay');
+  els.activateLocationBtn = document.getElementById('activateLocationBtn');
+  els.skipLocationBtn = document.getElementById('skipLocationBtn');
   els.toast = document.getElementById('toast');
 }
 
@@ -2698,6 +2695,7 @@ async function init(){
   initMap();
   bindEvents();
   render();
+  if(!state.userLocation) window.setTimeout(openLocationModal, 400);
 
   const { data: sessionData } = await supabaseClient.auth.getSession();
   currentUser = sessionData?.session?.user || null;
