@@ -264,6 +264,24 @@
     }
     .rail::-webkit-scrollbar{display:none;}
     .rail + .rail{margin-top:8px;}
+    .filters-row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+    .filter-select{
+      flex:1 1 0;
+      min-width:0;
+      min-height:38px;
+      padding:0 32px 0 13px;
+      border-radius:14px;
+      color:var(--text);
+      background:rgba(247,241,232,.07);
+      border:1px solid var(--border);
+      font-size:13px;
+      font-weight:700;
+    }
+    .filters-row .chip{flex:0 0 auto;}
     .chip{
       flex:0 0 auto;
       display:inline-flex;
@@ -996,8 +1014,8 @@
       .search-row{margin:0; grid-template-columns:1fr auto;}
       .segmented{display:none;}
       .filters-shell{top:73px; padding:10px 28px 12px;}
-      .filters-shell{display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center;}
-      .rail + .rail{margin-top:0;}
+      .filters-row{max-width:560px;}
+      .filter-select{max-width:220px;}
       .workspace{
         height:calc(100dvh - 132px);
         display:grid;
@@ -1090,8 +1108,19 @@
     </header>
 
     <section class="filters-shell" aria-label="Filtros de planes">
-      <div class="rail" id="dateFilters" aria-label="Filtrar por fecha"></div>
-      <div class="rail" id="categoryFilters" aria-label="Filtrar por categoría"></div>
+      <div class="filters-row">
+        <label class="sr-only" for="dateFilterSelect">Filtrar por fecha</label>
+        <select class="filter-select" id="dateFilterSelect" aria-label="Filtrar por fecha">
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="todos">Próximos</option>
+        </select>
+        <label class="sr-only" for="categoryFilterSelect">Filtrar por categoría</label>
+        <select class="filter-select" id="categoryFilterSelect" aria-label="Filtrar por categoría"></select>
+        <button type="button" class="chip alt" id="freeToggleBtn" aria-pressed="false">
+          <i class="ti ti-ticket" aria-hidden="true"></i>Gratis
+        </button>
+      </div>
     </section>
 
     <main class="workspace" id="workspace">
@@ -1175,13 +1204,6 @@ const CATEGORIES = [
 ];
 
 const ALL_CATEGORY_CHIPS = [{id:'todos', label:'Todos', icon:'ti-sparkles'}, ...CATEGORIES];
-
-const DATE_FILTERS = [
-  {id:'hoy', label:'Hoy', icon:'ti-calendar-event'},
-  {id:'semana', label:'Esta semana', icon:'ti-calendar-week'},
-  {id:'todos', label:'Próximos', icon:'ti-calendar-plus'},
-  {id:'gratis', label:'Gratis', icon:'ti-ticket'}
-];
 
 const SEED_EVENTS = [
   {
@@ -1443,20 +1465,15 @@ function showToast(message){
 }
 
 function buildFilters(){
-  els.dateFilters.innerHTML = DATE_FILTERS.map(filter => {
-    const isGratis = filter.id === 'gratis';
-    const active = isGratis ? state.freeOnly : state.dateFilter === filter.id;
-    return `<button type="button" class="chip ${active ? 'active' : ''} ${isGratis ? 'alt' : ''}" data-date-filter="${filter.id}" aria-pressed="${active}">
-      <i class="ti ${filter.icon}" aria-hidden="true"></i>${filter.label}
-    </button>`;
-  }).join('');
-
-  els.categoryFilters.innerHTML = ALL_CATEGORY_CHIPS.map(cat => {
-    const active = state.activeCategory === cat.id;
-    return `<button type="button" class="chip ${active ? 'active' : ''}" data-category="${cat.id}" aria-pressed="${active}">
-      <i class="ti ${cat.icon}" aria-hidden="true"></i>${cat.label}
-    </button>`;
-  }).join('');
+  if(!els.categoryFilterSelect.options.length){
+    els.categoryFilterSelect.innerHTML = ALL_CATEGORY_CHIPS.map(cat =>
+      `<option value="${cat.id}">${cat.label}</option>`
+    ).join('');
+  }
+  els.dateFilterSelect.value = state.dateFilter;
+  els.categoryFilterSelect.value = state.activeCategory;
+  els.freeToggleBtn.classList.toggle('active', state.freeOnly);
+  els.freeToggleBtn.setAttribute('aria-pressed', state.freeOnly);
 }
 
 function getFilteredEvents(){
@@ -2280,19 +2297,18 @@ function bindEvents(){
     if(card) highlightPin(card.dataset.cardId, false);
   });
 
-  els.dateFilters.addEventListener('click', event => {
-    const btn = event.target.closest('[data-date-filter]');
-    if(!btn) return;
-    const filter = btn.dataset.dateFilter;
-    if(filter === 'gratis') state.freeOnly = !state.freeOnly;
-    else state.dateFilter = filter;
+  els.dateFilterSelect.addEventListener('change', () => {
+    state.dateFilter = els.dateFilterSelect.value;
     render();
   });
 
-  els.categoryFilters.addEventListener('click', event => {
-    const btn = event.target.closest('[data-category]');
-    if(!btn) return;
-    state.activeCategory = btn.dataset.category;
+  els.categoryFilterSelect.addEventListener('change', () => {
+    state.activeCategory = els.categoryFilterSelect.value;
+    render();
+  });
+
+  els.freeToggleBtn.addEventListener('click', () => {
+    state.freeOnly = !state.freeOnly;
     render();
   });
 
@@ -2363,8 +2379,9 @@ function cacheElements(){
   els.accountBtn = document.getElementById('accountBtn');
   els.searchInput = document.getElementById('searchInput');
   els.clearSearchBtn = document.getElementById('clearSearchBtn');
-  els.dateFilters = document.getElementById('dateFilters');
-  els.categoryFilters = document.getElementById('categoryFilters');
+  els.dateFilterSelect = document.getElementById('dateFilterSelect');
+  els.categoryFilterSelect = document.getElementById('categoryFilterSelect');
+  els.freeToggleBtn = document.getElementById('freeToggleBtn');
   els.workspace = document.getElementById('workspace');
   els.mapPane = document.getElementById('mapPane');
   els.listPane = document.getElementById('listPane');
