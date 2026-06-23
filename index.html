@@ -110,28 +110,25 @@
     }
     .brand-mark{
       position:relative;
-      width:34px;height:34px;
+      width:14px;height:14px;
+      margin:0 10px;
       border-radius:50%;
-      display:grid;
-      place-items:center;
       background:linear-gradient(135deg, var(--primary), var(--secondary));
-      color:var(--ink);
-      box-shadow:0 0 0 5px rgba(0,245,212,.10);
+      box-shadow:0 0 12px rgba(0,245,212,.55);
       flex:0 0 auto;
     }
     .brand-mark::after{
       content:'';
       position:absolute;
-      inset:-5px;
+      inset:-7px;
       border-radius:50%;
       border:1px solid rgba(0,245,212,.35);
       animation:brandPulse 2.4s ease-out infinite;
     }
-    .brand-mark i{font-size:15px; position:relative;}
     @keyframes brandPulse{
-      0%{transform:scale(.82); opacity:.9;}
-      70%{transform:scale(1.25); opacity:0;}
-      100%{transform:scale(1.25); opacity:0;}
+      0%{transform:scale(.7); opacity:.9;}
+      70%{transform:scale(1.7); opacity:0;}
+      100%{transform:scale(1.7); opacity:0;}
     }
     .brand-name{
       display:block;
@@ -193,6 +190,8 @@
       white-space:nowrap;
     }
     .location-btn i{color:var(--mint); font-size:16px;}
+    .location-btn.active{background:rgba(182,255,59,.12); border-color:var(--mint); color:var(--mint);}
+    .location-btn.active i{color:var(--mint);}
     .account-btn{
       width:38px;height:38px;
       border-radius:14px;
@@ -292,10 +291,21 @@
     .rail + .rail{margin-top:8px;}
     .filters-row{
       display:flex;
+      flex-wrap:wrap;
       gap:8px;
       align-items:center;
     }
     .filters-row .chip{flex:0 0 auto;}
+    .filters-search{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex:1 1 200px;
+      min-width:160px;
+      margin-left:auto;
+    }
+    .filters-search .search-box{flex:1 1 auto; min-width:0; min-height:38px;}
+    .filters-search .search-box input{height:38px;}
     .dropdown{
       position:relative;
       flex:1 1 0;
@@ -350,6 +360,7 @@
     .dropdown-menu li:hover,
     .dropdown-menu li:focus-visible{background:rgba(247,241,232,.08); color:var(--text);}
     .dropdown-menu li[aria-selected="true"]{background:var(--coral); color:var(--ink); font-weight:800;}
+    .dropdown-menu li.disabled{opacity:.4; cursor:not-allowed; pointer-events:none;}
     .chip{
       flex:0 0 auto;
       display:inline-flex;
@@ -741,7 +752,7 @@
       position:fixed;
       right:18px;
       bottom:calc(18px + env(safe-area-inset-bottom));
-      z-index:80;
+      z-index:950;
       width:60px;height:60px;
       border-radius:22px;
       display:grid;
@@ -1109,10 +1120,9 @@
       .app-header{padding:16px 28px 14px;}
       .brand-name{font-size:23px;}
       .filters-shell{padding:14px 28px;}
-      .search-row{max-width:560px;}
       .segmented{display:none;}
-      .filters-row{max-width:560px;}
       .dropdown{max-width:220px; flex:0 1 220px;}
+      .filters-search{max-width:320px;}
       .workspace{
         height:calc(100dvh - 192px);
         display:grid;
@@ -1173,7 +1183,7 @@
     <header class="app-header" role="banner">
       <div class="brand-row">
         <div class="brand" aria-label="Sonda">
-          <div class="brand-mark" aria-hidden="true"><i class="ti ti-circle-dot"></i></div>
+          <div class="brand-mark" aria-hidden="true"></div>
           <div>
             <span class="brand-name">Sonda</span>
             <span class="brand-kicker" id="locationLabel">Qué está pasando cerca tuyo</span>
@@ -1187,14 +1197,9 @@
 
     <section class="filters-shell" aria-label="Buscar, filtrar y cambiar vista">
       <div class="search-row">
-        <button type="button" class="location-btn" id="locationBtn" aria-label="Usar mi ubicación">
+        <button type="button" class="location-btn" id="locationBtn" aria-label="Usar mi ubicación" aria-pressed="false">
           <i class="ti ti-current-location"></i><span>Usar ubicación</span>
         </button>
-        <label class="search-box" for="searchInput">
-          <i class="ti ti-search" aria-hidden="true"></i>
-          <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar planes, zonas o categorías" />
-        </label>
-        <button type="button" class="icon-btn" id="clearSearchBtn" aria-label="Limpiar búsqueda" hidden><i class="ti ti-x"></i></button>
       </div>
 
       <nav class="segmented" aria-label="Cambiar vista">
@@ -1222,6 +1227,13 @@
         <button type="button" class="chip alt" id="freeToggleBtn" aria-pressed="false">
           <i class="ti ti-ticket" aria-hidden="true"></i>Gratis
         </button>
+        <div class="filters-search">
+          <label class="search-box" for="searchInput">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar planes, zonas o categorías" />
+          </label>
+          <button type="button" class="icon-btn" id="clearSearchBtn" aria-label="Limpiar búsqueda" hidden><i class="ti ti-x"></i></button>
+        </div>
       </div>
     </section>
 
@@ -1233,11 +1245,21 @@
             <p class="list-subtitle" id="resultsSubtitle">Tocá una tarjeta para ver detalle, guardar o abrir cómo llegar.</p>
           </div>
           <label class="sr-only" for="sortSelect">Ordenar resultados</label>
-          <select class="sort-select" id="sortSelect">
+          <select class="sort-select sr-only" id="sortSelect" tabindex="-1" aria-hidden="true">
             <option value="date">Próximos</option>
             <option value="distance">Cercanía</option>
             <option value="price">Gratis primero</option>
           </select>
+          <div class="dropdown" id="sortDropdown">
+            <button type="button" class="dropdown-btn" id="sortDropdownBtn" aria-haspopup="listbox" aria-expanded="false">
+              <span id="sortDropdownLabel">Próximos</span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu" id="sortDropdownMenu" role="listbox" aria-label="Ordenar resultados" hidden>
+              <li role="option" data-value="date" aria-selected="true">Próximos</li>
+              <li role="option" data-value="distance" aria-selected="false">Cercanía</li>
+              <li role="option" data-value="price" aria-selected="false">Gratis primero</li>
+            </ul>
+          </div>
         </div>
         <div class="cards" id="listView"></div>
       </section>
@@ -1584,6 +1606,7 @@ function buildFilters(){
   }
   syncDropdown(els.dateFilterMenu, els.dateFilterLabel, state.dateFilter);
   syncDropdown(els.categoryFilterMenu, els.categoryFilterLabel, state.activeCategory);
+  syncDropdown(els.sortDropdownMenu, els.sortDropdownLabel, els.sortSelect.value);
   els.freeToggleBtn.classList.toggle('active', state.freeOnly);
   els.freeToggleBtn.setAttribute('aria-pressed', state.freeOnly);
 }
@@ -1610,7 +1633,7 @@ function initDropdown(btn, menu, onSelect){
   });
   menu.addEventListener('click', event => {
     const li = event.target.closest('[data-value]');
-    if(!li) return;
+    if(!li || li.classList.contains('disabled')) return;
     onSelect(li.dataset.value);
     close();
   });
@@ -1820,11 +1843,17 @@ function renderLocationStatus(){
   els.mapStatus.hidden = hasLocation;
   els.locationLabel.textContent = hasLocation ? 'Cerca de tu ubicación' : 'Qué está pasando cerca tuyo';
   els.locationBtn.querySelector('span').textContent = hasLocation ? 'Ubicación activa' : 'Usar ubicación';
+  els.locationBtn.classList.toggle('active', hasLocation);
+  els.locationBtn.setAttribute('aria-pressed', String(hasLocation));
   els.sortSelect.querySelector('option[value="distance"]').disabled = !hasLocation;
   if(!hasLocation && state.sortBy === 'distance'){
     state.sortBy = 'date';
     els.sortSelect.value = 'date';
   }
+  const distanceOption = els.sortDropdownMenu.querySelector('[data-value="distance"]');
+  distanceOption.classList.toggle('disabled', !hasLocation);
+  distanceOption.setAttribute('aria-disabled', String(!hasLocation));
+  syncDropdown(els.sortDropdownMenu, els.sortDropdownLabel, els.sortSelect.value);
 }
 
 function setView(view){
@@ -1846,6 +1875,16 @@ function resetFilters(){
 }
 
 function requestLocation(){
+  if(state.userLocation){
+    state.userLocation = null;
+    if(state.sortBy === 'distance'){
+      state.sortBy = 'date';
+      els.sortSelect.value = 'date';
+    }
+    showToast('Ubicación desactivada.');
+    render();
+    return;
+  }
   if(!navigator.geolocation){
     showToast('Tu navegador no permite geolocalización');
     return;
@@ -1928,7 +1967,7 @@ function openDetail(id){
     <div class="detail-actions">
       <div class="main-action-row">
         <button type="button" class="primary-btn ${interaction.interested ? 'yellow' : ''}" id="interestBtn"><i class="ti ${interaction.interested ? 'ti-star-filled' : 'ti-star'}"></i>${interaction.interested ? 'Te interesa' : 'Me interesa'}</button>
-        <button type="button" class="primary-btn ${interaction.going ? 'mint' : ''}" id="goingBtn"><i class="ti ${interaction.going ? 'ti-check' : 'ti-checkup-list'}"></i>${interaction.going ? 'Vas' : 'Voy'}</button>
+        <button type="button" class="primary-btn ${interaction.going ? 'mint' : ''}" id="goingBtn"><i class="ti ${interaction.going ? 'ti-check' : 'ti-flag'}"></i>${interaction.going ? 'Vas' : 'Voy'}</button>
       </div>
       <div class="minor-action-row">
         <button type="button" class="secondary-btn" id="routeBtn"><i class="ti ti-route"></i>Cómo llegar</button>
@@ -2448,6 +2487,11 @@ function bindEvents(){
     render();
   });
 
+  initDropdown(els.sortDropdownBtn, els.sortDropdownMenu, value => {
+    els.sortSelect.value = value;
+    els.sortSelect.dispatchEvent(new Event('change'));
+  });
+
   document.addEventListener('click', closeAllDropdowns);
   document.addEventListener('keydown', event => {
     if(event.key === 'Escape') closeAllDropdowns();
@@ -2531,6 +2575,9 @@ function cacheElements(){
   els.categoryFilterBtn = document.getElementById('categoryFilterBtn');
   els.categoryFilterMenu = document.getElementById('categoryFilterMenu');
   els.categoryFilterLabel = document.getElementById('categoryFilterLabel');
+  els.sortDropdownBtn = document.getElementById('sortDropdownBtn');
+  els.sortDropdownMenu = document.getElementById('sortDropdownMenu');
+  els.sortDropdownLabel = document.getElementById('sortDropdownLabel');
   els.freeToggleBtn = document.getElementById('freeToggleBtn');
   els.workspace = document.getElementById('workspace');
   els.mapPane = document.getElementById('mapPane');
