@@ -715,6 +715,18 @@
     font-size:12px; color:var(--text-faint);
     text-align:center; margin-top:12px; line-height:1.5;
   }
+  .forgot-password-link{
+    display:block;
+    width:100%;
+    background:transparent;
+    border:none;
+    color:var(--mint);
+    font-size:13px;
+    font-weight:600;
+    text-align:center;
+    margin-top:14px;
+    cursor:pointer;
+  }
 
   .geocode-status{
     font-size:12px;
@@ -1731,11 +1743,13 @@ function renderAccountSheet(){
           <input type="password" id="authPassword" placeholder="Mínimo 6 caracteres" minlength="6" required>
         </div>
         <button type="submit" class="submit-btn" id="authSubmitBtn">Ingresar</button>
+        <button type="button" class="forgot-password-link" id="forgotPasswordBtn">¿Olvidaste tu contraseña?</button>
         <p class="form-note" id="authStatus">Una vez que ingreses, no vas a tener que volver a loguearte en este navegador.</p>
       </form>
     `;
     let authMode = 'login';
     const submitBtn = document.getElementById('authSubmitBtn');
+    const forgotBtn = document.getElementById('forgotPasswordBtn');
     document.querySelectorAll('#authModeToggle button').forEach(btn => {
       btn.addEventListener('click', () => {
         authMode = btn.dataset.mode;
@@ -1745,10 +1759,12 @@ function renderAccountSheet(){
           b.setAttribute('aria-pressed', active);
         });
         submitBtn.textContent = authMode === 'login' ? 'Ingresar' : 'Crear cuenta';
+        forgotBtn.style.display = authMode === 'login' ? 'block' : 'none';
         document.getElementById('authStatus').textContent = 'Una vez que ingreses, no vas a tener que volver a loguearte en este navegador.';
       });
     });
     document.getElementById('authForm').addEventListener('submit', (e) => handleAuthSubmit(e, () => authMode));
+    forgotBtn.addEventListener('click', handleForgotPassword);
   }else{
     const prefItems = CATEGORIES.map(c => `
       <label class="pref-item">
@@ -1841,6 +1857,22 @@ async function handleSetNewPassword(e){
   passwordRecoveryMode = false;
   showToast('Contraseña actualizada');
   renderAccountSheet();
+}
+
+async function handleForgotPassword(){
+  const email = document.getElementById('authEmail').value.trim();
+  const status = document.getElementById('authStatus');
+  if(!email){
+    status.textContent = 'Escribí tu email arriba para poder enviarte el link.';
+    return;
+  }
+  status.textContent = 'Enviando link de recuperación...';
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href
+  });
+  status.textContent = error
+    ? 'No se pudo enviar el link. Probá de nuevo en un rato.'
+    : 'Listo, revisá tu email y tocá el link para definir una contraseña nueva.';
 }
 
 async function init(){
