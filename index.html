@@ -1724,6 +1724,10 @@ function getFilteredEvents(){
     }
     const dateDiff = parseLocalDate(a.date) - parseLocalDate(b.date);
     if(dateDiff !== 0) return dateDiff;
+    if(state.userLocation){
+      const distDiff = (a._dist ?? 9999) - (b._dist ?? 9999);
+      if(distDiff !== 0) return distDiff;
+    }
     return minutesFromMidnight(a.time) - minutesFromMidnight(b.time);
   });
 
