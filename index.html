@@ -123,6 +123,26 @@
   .pref-item span{flex:1; font-size:14px;}
   .pref-item input{width:18px; height:18px; accent-color:var(--coral);}
 
+  .my-plans-section{margin-bottom:18px;}
+  .my-plans-empty{font-size:13px; color:var(--text-dim); padding:10px 12px; background:var(--bg-card); border-radius:10px;}
+  .my-plan-item{
+    display:flex; align-items:center; gap:10px;
+    background:var(--bg-card);
+    border-radius:10px;
+    padding:10px 12px;
+    cursor:pointer;
+    margin-bottom:8px;
+  }
+  .my-plan-item:last-child{margin-bottom:0;}
+  .my-plan-info{flex:1; min-width:0;}
+  .my-plan-title{font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .my-plan-meta{font-size:12px; color:var(--text-dim);}
+  .my-plan-badge{
+    font-size:11px; font-weight:600; padding:3px 8px; border-radius:20px; flex-shrink:0;
+  }
+  .my-plan-badge.interesa{background:rgba(255,107,107,0.15); color:var(--coral);}
+  .my-plan-badge.voy{background:rgba(76,217,153,0.15); color:var(--mint);}
+
   .view-toggle{
     display:flex;
     background:var(--bg-elevated);
@@ -1546,6 +1566,12 @@ function closeAccountSheet(){
   document.getElementById('mapWrap').style.zIndex = '';
 }
 
+function getMyPlans(){
+  return events
+    .filter(ev => interactions[ev.id] === 'interesa' || interactions[ev.id] === 'voy')
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+
 function renderAccountSheet(){
   const sheet = document.getElementById('accountSheet');
 
@@ -1574,17 +1600,41 @@ function renderAccountSheet(){
       </label>
     `).join('');
 
+    const myPlans = getMyPlans();
+    const myPlansHtml = myPlans.length
+      ? myPlans.map(ev => `
+        <div class="my-plan-item" data-id="${ev.id}">
+          <div class="my-plan-info">
+            <div class="my-plan-title">${escapeHtml(ev.title)}</div>
+            <div class="my-plan-meta">${fmtDate(ev.date)} · ${ev.time}</div>
+          </div>
+          <span class="my-plan-badge ${interactions[ev.id]}">${interactions[ev.id] === 'voy' ? 'Voy' : 'Me interesa'}</span>
+        </div>
+      `).join('')
+      : `<div class="my-plans-empty">Todavía no marcaste planes como "me interesa" o "voy".</div>`;
+
     sheet.innerHTML = `
       <button type="button" class="sheet-close" id="closeAccount"><i class="ti ti-x"></i></button>
       <div class="sheet-handle"></div>
       <h2 class="form-title">Mi cuenta</h2>
       <p class="form-sub">${escapeHtml(currentUser.email)}</p>
+
+      <h3 class="form-title" style="font-size:16px; margin-top:18px;">Mis planes</h3>
+      <div class="my-plans-section">${myPlansHtml}</div>
+
+      <h3 class="form-title" style="font-size:16px;">Preferencias</h3>
       <p class="form-sub" style="margin-top:-12px;">Elegí los tipos de evento que te interesan.</p>
       <div class="pref-list">${prefItems}</div>
       <button type="button" class="action-btn" id="logoutBtn" style="width:100%;"><i class="ti ti-logout"></i>Cerrar sesión</button>
     `;
     sheet.querySelectorAll('.pref-item input').forEach(input => {
       input.addEventListener('change', () => togglePreference(input.dataset.category, input.checked));
+    });
+    sheet.querySelectorAll('.my-plan-item').forEach(item => {
+      item.addEventListener('click', () => {
+        closeAccountSheet();
+        openDetail(item.dataset.id);
+      });
     });
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await supabaseClient.auth.signOut();
