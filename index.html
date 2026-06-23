@@ -161,6 +161,18 @@
     color:var(--bg);
     border-color:var(--text);
   }
+  .filter-chip-today{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    margin-right:6px;
+  }
+  .filter-chip-today i{font-size:14px;}
+  .filter-chip-today.active{
+    background:var(--coral);
+    color:#241208;
+    border-color:var(--coral);
+  }
 
   /* ---------- MAIN ---------- */
   .main{flex:1; position:relative;}
@@ -240,6 +252,28 @@
   .empty-state i{font-size:32px; color:var(--text-faint); margin-bottom:12px; display:block;}
   .empty-state p{font-size:14px; margin:0 0 4px;}
   .empty-state .sub{font-size:13px; color:var(--text-faint);}
+
+  .list-sort-bar{
+    display:flex;
+    justify-content:flex-end;
+    margin-bottom:10px;
+  }
+  .sort-toggle-btn{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:var(--bg-card);
+    border:1px solid var(--border-strong);
+    color:var(--text-dim);
+    font-size:12px;
+    font-weight:600;
+    padding:7px 12px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .sort-toggle-btn i{font-size:14px;}
+  .sort-toggle-btn:hover{color:var(--text); border-color:var(--text-dim);}
 
   .ticket{
     position:relative;
@@ -627,15 +661,23 @@
     align-items:center;
     gap:8px;
   }
-  .loc-banner i{color:var(--coral); font-size:15px;}
-  .loc-banner button{
+  .loc-banner i{color:var(--coral); font-size:15px; flex-shrink:0;}
+  .loc-banner span{flex:1;}
+  .loc-banner .loc-banner-actions{
+    display:flex;
+    align-items:center;
+    gap:10px;
     margin-left:auto;
+    flex-shrink:0;
+  }
+  .loc-banner button{
     background:transparent;
     border:none;
     color:var(--text-faint);
     cursor:pointer;
     font-size:13px;
   }
+  .loc-banner .loc-retry-btn{color:var(--mint); font-weight:600;}
 </style>
 </head>
 <body>
@@ -657,6 +699,7 @@
 
   <div class="main">
     <div id="mapWrap" style="position:relative;">
+      <div class="loc-banner" id="locBanner" style="display:none;" role="alert"></div>
       <div id="map"></div>
     </div>
     <div class="list-view" id="listView" style="display:none;"></div>
@@ -779,6 +822,34 @@ const SEED_EVENTS = [
     desc:'Tres bandas emergentes de la escena indie porteña en formato íntimo, capacidad limitada a 80 personas.',
     address:'Niceto Vega Underground, Palermo', organizer:'Niceto Club',
     img:'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&q=70'
+  },
+  {
+    id:'seed-13', title:'Feria de antigüedades de Belgrano', category:'feria',
+    lat:-34.5633, lng:-58.4566, date: todayStr(), time:'11:00', price:'Gratis',
+    desc:'Feria de antigüedades y objetos vintage en las Barrancas de Belgrano. (Contenido de ejemplo para hoy.)',
+    address:'Barrancas de Belgrano', organizer:'Demo Radar de Planes',
+    img:'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=600&q=70'
+  },
+  {
+    id:'seed-14', title:'Recital acústico en Belgrano', category:'musica',
+    lat:-34.5650, lng:-58.4525, date: todayStr(), time:'20:00', price:'$3000',
+    desc:'Recital acústico íntimo en un bar de Belgrano. (Contenido de ejemplo para hoy.)',
+    address:'Av. Cabildo al 2000, Belgrano', organizer:'Demo Radar de Planes',
+    img:'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&q=70'
+  },
+  {
+    id:'seed-15', title:'Cine de barrio: clásico argentino', category:'cine',
+    lat:-34.5605, lng:-58.4580, date: todayStr(), time:'19:00', price:'Gratis',
+    desc:'Proyección al aire libre de un clásico del cine argentino en Belgrano. (Contenido de ejemplo para hoy.)',
+    address:'Plaza Belgrano', organizer:'Demo Radar de Planes',
+    img:'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&q=70'
+  },
+  {
+    id:'seed-16', title:'Picada y cerveza artesanal en Belgrano', category:'gastro',
+    lat:-34.5615, lng:-58.4555, date: todayStr(), time:'18:30', price:'$2500',
+    desc:'Encuentro gastronómico con picadas y cerveza artesanal en Belgrano. (Contenido de ejemplo para hoy.)',
+    address:'Av. Cabildo, Belgrano', organizer:'Demo Radar de Planes',
+    img:'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&q=70'
   }
 ];
 
@@ -786,6 +857,8 @@ let userLocation = null;
 let map, markersLayer;
 let formMap, formMarker;
 let activeFilter = 'todos';
+let showTodayOnly = true;
+let sortOrder = 'asc';
 let currentView = 'mapa';
 let events = [];
 let interactions = {};
@@ -803,6 +876,13 @@ function haversine(lat1, lon1, lat2, lon2){
 function fmtDist(km){
   if(km < 1) return Math.round(km*1000) + ' m';
   return km.toFixed(1).replace('.0','') + ' km';
+}
+
+function todayStr(){
+  const d = new Date();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 function fmtDate(dateStr){
@@ -853,10 +933,16 @@ function showToast(msg){
 function buildFilters(){
   const wrap = document.getElementById('filters');
   const chips = [{id:'todos', label:'Todos'}, ...CATEGORIES];
-  wrap.innerHTML = chips.map(c =>
+  const todayChip = `<button type="button" class="filter-chip filter-chip-today${showTodayOnly?' active':''}" id="todayToggle" aria-pressed="${showTodayOnly}"><i class="ti ti-calendar-event"></i>Hoy</button>`;
+  wrap.innerHTML = todayChip + chips.map(c =>
     `<button type="button" class="filter-chip${c.id===activeFilter?' active':''}" data-filter="${c.id}" aria-pressed="${c.id===activeFilter}">${c.label}</button>`
   ).join('');
-  wrap.querySelectorAll('.filter-chip').forEach(btn => {
+  document.getElementById('todayToggle').addEventListener('click', () => {
+    showTodayOnly = !showTodayOnly;
+    buildFilters();
+    render();
+  });
+  wrap.querySelectorAll('.filter-chip[data-filter]').forEach(btn => {
     btn.addEventListener('click', () => {
       activeFilter = btn.dataset.filter;
       buildFilters();
@@ -867,13 +953,17 @@ function buildFilters(){
 
 function getFilteredEvents(){
   let list = activeFilter === 'todos' ? events.slice() : events.filter(e => e.category === activeFilter);
+  if(showTodayOnly){
+    const today = todayStr();
+    list = list.filter(e => e.date === today);
+  }
   list = list.map(e => {
     const dist = userLocation ? haversine(userLocation.lat, userLocation.lng, e.lat, e.lng) : null;
     return {...e, _dist: dist};
   });
   list.sort((a,b) => {
-    if(a._dist == null) return 0;
-    return a._dist - b._dist;
+    if(a._dist == null || b._dist == null) return 0;
+    return sortOrder === 'asc' ? a._dist - b._dist : b._dist - a._dist;
   });
   return list;
 }
@@ -953,16 +1043,26 @@ function renderList(){
   const list = getFilteredEvents();
 
   if(list.length === 0){
+    const msg = showTodayOnly ? 'No hay planes para hoy en esta categoría' : 'No hay planes en esta categoría todavía';
+    const sub = showTodayOnly ? 'Tocá "Hoy" para ver todas las fechas' : 'Probá otro filtro o agregá el primero';
     wrap.innerHTML = `
       <div class="empty-state">
         <i class="ti ti-map-pin-off"></i>
-        <p>No hay planes en esta categoría todavía</p>
-        <div class="sub">Probá otro filtro o agregá el primero</div>
+        <p>${msg}</p>
+        <div class="sub">${sub}</div>
       </div>`;
     return;
   }
 
-  wrap.innerHTML = list.map(ev => {
+  const sortBarHtml = userLocation ? `
+    <div class="list-sort-bar">
+      <button type="button" id="sortToggle" class="sort-toggle-btn">
+        <i class="ti ${sortOrder==='asc' ? 'ti-sort-ascending' : 'ti-sort-descending'}"></i>
+        ${sortOrder==='asc' ? 'Más cerca primero' : 'Más lejos primero'}
+      </button>
+    </div>` : '';
+
+  wrap.innerHTML = sortBarHtml + list.map(ev => {
     const distTxt = ev._dist != null ? fmtDist(ev._dist) : '—';
     return `
     <div class="ticket" data-id="${ev.id}" role="button" tabindex="0" aria-label="Ver detalle de ${escapeHtml(ev.title)}">
@@ -981,6 +1081,14 @@ function renderList(){
       </div>
     </div>`;
   }).join('');
+
+  const sortToggle = document.getElementById('sortToggle');
+  if(sortToggle){
+    sortToggle.addEventListener('click', () => {
+      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      renderList();
+    });
+  }
 
   wrap.querySelectorAll('.ticket').forEach(card => {
     card.addEventListener('click', () => openDetail(card.dataset.id));
@@ -1124,7 +1232,7 @@ function openForm(){
       <div class="field-row">
         <div class="field">
           <label>Fecha</label>
-          <input type="date" id="f-date" required>
+          <input type="date" id="f-date" min="${todayStr()}" required>
         </div>
         <div class="field">
           <label>Hora</label>
@@ -1240,21 +1348,34 @@ function bindAddressGeocoding(){
   }
 }
 
+function isValidImageUrl(url){
+  return /^https?:\/\//i.test(url);
+}
+
 function handleSubmit(e){
   e.preventDefault();
+
+  const dateVal = document.getElementById('f-date').value;
+  if(dateVal < todayStr()){
+    showToast('La fecha no puede ser anterior a hoy');
+    return;
+  }
+
   const pinPos = formMarker.getLatLng();
+  const imgInput = document.getElementById('f-img').value.trim();
+  const img = imgInput && isValidImageUrl(imgInput) ? imgInput : 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&q=70';
 
   const newEvent = {
     id: uid(),
     title: document.getElementById('f-title').value.trim(),
     category: document.getElementById('f-category').value,
     price: document.getElementById('f-price').value.trim(),
-    date: document.getElementById('f-date').value,
+    date: dateVal,
     time: document.getElementById('f-time').value,
     address: document.getElementById('f-address').value.trim(),
     organizer: document.getElementById('f-organizer').value.trim(),
     desc: document.getElementById('f-desc').value.trim(),
-    img: document.getElementById('f-img').value.trim() || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&q=70',
+    img,
     lat: pinPos.lat,
     lng: pinPos.lng
   };
@@ -1283,24 +1404,65 @@ function setView(view){
   }
 }
 
+function showLocationBanner(msg, retryable){
+  const banner = document.getElementById('locBanner');
+  banner.innerHTML = `
+    <i class="ti ti-map-pin-off"></i>
+    <span>${msg}</span>
+    <div class="loc-banner-actions">
+      ${retryable ? '<button type="button" class="loc-retry-btn" id="locRetryBtn">Reintentar</button>' : ''}
+      <button type="button" id="locCloseBtn" aria-label="Cerrar aviso"><i class="ti ti-x"></i></button>
+    </div>
+  `;
+  banner.style.display = 'flex';
+  if(retryable){
+    document.getElementById('locRetryBtn').onclick = () => {
+      hideLocationBanner();
+      requestLocation();
+    };
+  }
+  document.getElementById('locCloseBtn').onclick = hideLocationBanner;
+}
+
+function hideLocationBanner(){
+  document.getElementById('locBanner').style.display = 'none';
+}
+
 function requestLocation(){
   if(!navigator.geolocation){
     document.getElementById('locTag').textContent = 'Buenos Aires';
+    showLocationBanner('Tu navegador no soporta geolocalización.', false);
     return;
   }
+  if(!window.isSecureContext){
+    document.getElementById('locTag').textContent = 'Buenos Aires';
+    showLocationBanner('La ubicación solo funciona en sitios con conexión segura (https).', false);
+    return;
+  }
+
+  document.getElementById('locTag').textContent = 'Buscando tu ubicación...';
+
   navigator.geolocation.getCurrentPosition(
     pos => {
       userLocation = {lat: pos.coords.latitude, lng: pos.coords.longitude};
       document.getElementById('locTag').textContent = 'Cerca de tu ubicación';
+      hideLocationBanner();
       if(map){
         map.setView([userLocation.lat, userLocation.lng], 14);
       }
       render();
     },
-    () => {
+    err => {
       document.getElementById('locTag').textContent = 'Buenos Aires';
+      if(err.code === err.PERMISSION_DENIED){
+        showLocationBanner('No tenés activado el permiso de ubicación para este sitio. Activalo desde la configuración del navegador y volvé a intentar.', true);
+      }else if(err.code === err.TIMEOUT){
+        showLocationBanner('Tardamos demasiado en encontrar tu ubicación.', true);
+      }else{
+        showLocationBanner('No pudimos obtener tu ubicación.', true);
+      }
     },
-    {timeout: 6000}
+    {timeout: 12000, enableHighAccuracy: true, maximumAge: 60000}
   );
 }
 
