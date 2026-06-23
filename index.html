@@ -661,15 +661,23 @@
     align-items:center;
     gap:8px;
   }
-  .loc-banner i{color:var(--coral); font-size:15px;}
-  .loc-banner button{
+  .loc-banner i{color:var(--coral); font-size:15px; flex-shrink:0;}
+  .loc-banner span{flex:1;}
+  .loc-banner .loc-banner-actions{
+    display:flex;
+    align-items:center;
+    gap:10px;
     margin-left:auto;
+    flex-shrink:0;
+  }
+  .loc-banner button{
     background:transparent;
     border:none;
     color:var(--text-faint);
     cursor:pointer;
     font-size:13px;
   }
+  .loc-banner .loc-retry-btn{color:var(--mint); font-weight:600;}
 </style>
 </head>
 <body>
@@ -691,6 +699,7 @@
 
   <div class="main">
     <div id="mapWrap" style="position:relative;">
+      <div class="loc-banner" id="locBanner" style="display:none;" role="alert"></div>
       <div id="map"></div>
     </div>
     <div class="list-view" id="listView" style="display:none;"></div>
@@ -1395,24 +1404,65 @@ function setView(view){
   }
 }
 
+function showLocationBanner(msg, retryable){
+  const banner = document.getElementById('locBanner');
+  banner.innerHTML = `
+    <i class="ti ti-map-pin-off"></i>
+    <span>${msg}</span>
+    <div class="loc-banner-actions">
+      ${retryable ? '<button type="button" class="loc-retry-btn" id="locRetryBtn">Reintentar</button>' : ''}
+      <button type="button" id="locCloseBtn" aria-label="Cerrar aviso"><i class="ti ti-x"></i></button>
+    </div>
+  `;
+  banner.style.display = 'flex';
+  if(retryable){
+    document.getElementById('locRetryBtn').onclick = () => {
+      hideLocationBanner();
+      requestLocation();
+    };
+  }
+  document.getElementById('locCloseBtn').onclick = hideLocationBanner;
+}
+
+function hideLocationBanner(){
+  document.getElementById('locBanner').style.display = 'none';
+}
+
 function requestLocation(){
   if(!navigator.geolocation){
     document.getElementById('locTag').textContent = 'Buenos Aires';
+    showLocationBanner('Tu navegador no soporta geolocalización.', false);
     return;
   }
+  if(!window.isSecureContext){
+    document.getElementById('locTag').textContent = 'Buenos Aires';
+    showLocationBanner('La ubicación solo funciona en sitios con conexión segura (https).', false);
+    return;
+  }
+
+  document.getElementById('locTag').textContent = 'Buscando tu ubicación...';
+
   navigator.geolocation.getCurrentPosition(
     pos => {
       userLocation = {lat: pos.coords.latitude, lng: pos.coords.longitude};
       document.getElementById('locTag').textContent = 'Cerca de tu ubicación';
+      hideLocationBanner();
       if(map){
         map.setView([userLocation.lat, userLocation.lng], 14);
       }
       render();
     },
-    () => {
+    err => {
       document.getElementById('locTag').textContent = 'Buenos Aires';
+      if(err.code === err.PERMISSION_DENIED){
+        showLocationBanner('No tenés activado el permiso de ubicación para este sitio. Activalo desde la configuración del navegador y volvé a intentar.', true);
+      }else if(err.code === err.TIMEOUT){
+        showLocationBanner('Tardamos demasiado en encontrar tu ubicación.', true);
+      }else{
+        showLocationBanner('No pudimos obtener tu ubicación.', true);
+      }
     },
-    {timeout: 6000}
+    {timeout: 12000, enableHighAccuracy: true, maximumAge: 60000}
   );
 }
 
