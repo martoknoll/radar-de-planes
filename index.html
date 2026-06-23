@@ -197,6 +197,31 @@
     background:var(--coral);
     color:#241208;
   }
+  .auth-mode-toggle{
+    display:flex;
+    background:var(--bg-elevated);
+    border-radius:10px;
+    padding:3px;
+    gap:2px;
+    margin-bottom:18px;
+  }
+  .auth-mode-toggle button{
+    flex:1;
+    border:none;
+    background:transparent;
+    color:var(--text-dim);
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    padding:9px 0;
+    border-radius:8px;
+    cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .auth-mode-toggle button.active{
+    background:var(--coral);
+    color:#241208;
+  }
 
   @media (min-width: 900px){
     .topbar{ padding:22px 32px 14px; }
@@ -1670,17 +1695,39 @@ function renderAccountSheet(){
       <button type="button" class="sheet-close" id="closeAccount"><i class="ti ti-x"></i></button>
       <div class="sheet-handle"></div>
       <h2 class="form-title">Mi cuenta</h2>
-      <p class="form-sub">Ingresá con tu email para guardar tus preferencias de planes.</p>
-      <form id="loginForm">
+      <p class="form-sub">Creá tu cuenta o ingresá para guardar tus preferencias de planes.</p>
+      <div class="auth-mode-toggle" id="authModeToggle">
+        <button type="button" class="active" data-mode="login" aria-pressed="true">Ingresar</button>
+        <button type="button" data-mode="signup" aria-pressed="false">Crear cuenta</button>
+      </div>
+      <form id="authForm">
         <div class="field">
           <label>Email</label>
-          <input type="email" id="loginEmail" placeholder="tu@email.com" required>
+          <input type="email" id="authEmail" placeholder="tu@email.com" required>
         </div>
-        <button type="submit" class="submit-btn">Enviar link de acceso</button>
-        <p class="form-note" id="loginStatus">Te llega un link de acceso a tu email, sin contraseña.</p>
+        <div class="field">
+          <label>Contraseña</label>
+          <input type="password" id="authPassword" placeholder="Mínimo 6 caracteres" minlength="6" required>
+        </div>
+        <button type="submit" class="submit-btn" id="authSubmitBtn">Ingresar</button>
+        <p class="form-note" id="authStatus">Una vez que ingreses, no vas a tener que volver a loguearte en este navegador.</p>
       </form>
     `;
-    document.getElementById('loginForm').addEventListener('submit', handleLoginSubmit);
+    let authMode = 'login';
+    const submitBtn = document.getElementById('authSubmitBtn');
+    document.querySelectorAll('#authModeToggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        authMode = btn.dataset.mode;
+        document.querySelectorAll('#authModeToggle button').forEach(b => {
+          const active = b.dataset.mode === authMode;
+          b.classList.toggle('active', active);
+          b.setAttribute('aria-pressed', active);
+        });
+        submitBtn.textContent = authMode === 'login' ? 'Ingresar' : 'Crear cuenta';
+        document.getElementById('authStatus').textContent = 'Una vez que ingreses, no vas a tener que volver a loguearte en este navegador.';
+      });
+    });
+    document.getElementById('authForm').addEventListener('submit', (e) => handleAuthSubmit(e, () => authMode));
   }else{
     const prefItems = CATEGORIES.map(c => `
       <label class="pref-item">
@@ -1734,18 +1781,30 @@ function renderAccountSheet(){
   document.getElementById('closeAccount').onclick = closeAccountSheet;
 }
 
-async function handleLoginSubmit(e){
+async function handleAuthSubmit(e, getMode){
   e.preventDefault();
-  const email = document.getElementById('loginEmail').value.trim();
-  const status = document.getElementById('loginStatus');
-  status.textContent = 'Enviando link...';
-  const { error } = await supabaseClient.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.href }
-  });
-  status.textContent = error
-    ? 'No se pudo enviar el link. Probá de nuevo.'
-    : 'Listo, revisá tu email y tocá el link para ingresar.';
+  const mode = getMode();
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const status = document.getElementById('authStatus');
+
+  if(mode === 'signup'){
+    status.textContent = 'Creando cuenta...';
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if(error){
+      status.textContent = error.message.includes('already registered')
+        ? 'Ese email ya tiene una cuenta. Probá ingresar.'
+        : 'No se pudo crear la cuenta. Probá de nuevo.';
+    }else if(!data.session){
+      status.textContent = 'Cuenta creada. Revisá tu email para confirmarla y después ingresá.';
+    }else{
+      status.textContent = 'Cuenta creada.';
+    }
+  }else{
+    status.textContent = 'Ingresando...';
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    status.textContent = error ? 'Email o contraseña incorrectos.' : 'Listo.';
+  }
 }
 
 async function init(){
