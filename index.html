@@ -890,6 +890,7 @@
     }
     .organizer-box small{display:block; color:var(--faint); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em;}
     .organizer-box strong{display:block; margin-top:2px;}
+    .verified-badge{color:#3aa0ff; font-size:15px; vertical-align:middle;}
     .detail-actions{
       position:sticky;
       bottom:0;
@@ -1301,6 +1302,10 @@
     <article class="sheet" id="accountSheet" role="dialog" aria-modal="true" aria-labelledby="accountTitle"></article>
   </div>
 
+  <div class="sheet-overlay" id="adminOverlay" aria-hidden="true">
+    <article class="sheet" id="adminSheet" role="dialog" aria-modal="true" aria-labelledby="adminTitle"></article>
+  </div>
+
   <div class="sheet-overlay" id="locationOverlay" aria-hidden="true">
     <article class="sheet" id="locationSheet" role="dialog" aria-modal="true" aria-labelledby="locationModalTitle">
       <div class="sheet-handle" aria-hidden="true"></div>
@@ -1483,8 +1488,13 @@ let formMarker;
 let markerById = {};
 let toastTimer;
 let currentUser = null;
+let currentUserProfile = null;
 let passwordRecoveryMode = false;
 let userPreferences = new Set();
+
+function hasRole(...roles){
+  return !!currentUserProfile && roles.includes(currentUserProfile.role);
+}
 
 const els = {};
 
@@ -1570,6 +1580,38 @@ function loadLocalJson(key, fallback){
 function saveLocalJson(key, value){
   try{ localStorage.setItem(key, JSON.stringify(value)); }
   catch(error){ console.warn('No se pudo guardar en localStorage', error); }
+}
+
+function rowToEvent(row){
+  return {
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    lat: row.lat,
+    lng: row.lng,
+    date: row.date,
+    time: row.time,
+    price: row.price,
+    address: row.address,
+    organizer: row.organizer,
+    desc: row.description,
+    img: row.img,
+    createdBy: row.created_by,
+    verified: !!row.creator?.verified
+  };
+}
+
+async function fetchEvents(){
+  const { data, error } = await supabaseClient
+    .from('events')
+    .select('*, creator:profiles!events_created_by_fkey(verified)')
+    .order('created_at', { ascending:false });
+  if(error || !data){
+    console.warn('No se pudieron cargar los eventos de Supabase', error);
+    state.events = SEED_EVENTS;
+    return;
+  }
+  state.events = data.map(rowToEvent);
 }
 
 function getInteraction(id){
@@ -2017,7 +2059,7 @@ function openDetail(id){
       <p class="detail-desc">${escapeHtml(ev.desc)}</p>
       <div class="organizer-box">
         <span class="avatar">${escapeHtml(String(ev.organizer || 'RP').slice(0,2).toUpperCase())}</span>
-        <span><small>Organiza</small><strong>${escapeHtml(ev.organizer || 'Sin dato')}</strong></span>
+        <span><small>Organiza</small><strong>${escapeHtml(ev.organizer || 'Sin dato')}${ev.verified ? ' <i class="ti ti-rosette-discount-check verified-badge" title="Organizador verificado"></i>' : ''}</strong></span>
       </div>
     </div>
     <div class="detail-actions">
@@ -2098,6 +2140,19 @@ function closeSheet(overlay){
   }
 }
 
+function handleAddEventClick(){
+  if(!currentUser){
+    showToast('Ingresá con tu cuenta para publicar un plan');
+    openAccountSheet();
+    return;
+  }
+  if(!hasRole('organizer','admin')){
+    showToast('Tu cuenta no tiene permiso para publicar planes');
+    return;
+  }
+  openForm();
+}
+
 function openForm(){
   const options = CATEGORIES.map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('');
   els.formSheet.innerHTML = `
@@ -2105,7 +2160,7 @@ function openForm(){
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="form-content">
       <h2 class="form-title" id="formTitle">Sumar un plan</h2>
-      <p class="form-sub">Pensado como MVP: el evento se guarda en este navegador con localStorage y aparece al instante en el mapa.</p>
+      <p class="form-sub">El evento se publica para todos los usuarios y aparece al instante en el mapa.</p>
 
       <form id="eventForm" novalidate>
         <div class="field">
@@ -2167,7 +2222,6 @@ function openForm(){
 
         <div class="form-submit-row">
           <button type="submit" class="submit-btn">Publicar plan en el radar</button>
-          <p class="form-note">No hay backend real: esta publicación queda guardada solo en tu navegador.</p>
         </div>
       </form>
     </div>
@@ -2235,7 +2289,7 @@ function validateImageUrl(value){
   }
 }
 
-function handleFormSubmit(event){
+async function handleFormSubmit(event){
   event.preventDefault();
   const form = event.currentTarget;
   const required = [...form.querySelectorAll('[required]')];
@@ -2251,8 +2305,7 @@ function handleFormSubmit(event){
     return;
   }
   const pos = formMarker.getLatLng();
-  const newEvent = {
-    id:uid(),
+  const row = {
     title:document.getElementById('fTitle').value.trim(),
     category:document.getElementById('fCategory').value,
     price:document.getElementById('fPrice').value.trim(),
@@ -2260,13 +2313,26 @@ function handleFormSubmit(event){
     time:document.getElementById('fTime').value,
     address:document.getElementById('fAddress').value.trim(),
     organizer:document.getElementById('fOrganizer').value.trim(),
-    desc:document.getElementById('fDesc').value.trim(),
+    description:document.getElementById('fDesc').value.trim(),
     img:validateImageUrl(document.getElementById('fImg').value.trim()) || FALLBACK_IMG,
     lat:pos.lat,
-    lng:pos.lng
+    lng:pos.lng,
+    created_by:currentUser.id
   };
+  const submitBtn = form.querySelector('.submit-btn');
+  submitBtn.disabled = true;
+  const { data, error } = await supabaseClient
+    .from('events')
+    .insert(row)
+    .select('*, creator:profiles!events_created_by_fkey(verified)')
+    .single();
+  submitBtn.disabled = false;
+  if(error || !data){
+    showToast('No se pudo publicar el plan. Probá de nuevo.');
+    return;
+  }
+  const newEvent = rowToEvent(data);
   state.events.unshift(newEvent);
-  saveLocalJson(STORAGE_KEYS.events, state.events);
   state.activeCategories = ['todos'];
   state.dateFilter = daysUntil(dateValue) === 0 ? 'hoy' : 'todos';
   state.freeOnly = false;
@@ -2292,6 +2358,16 @@ async function ensureProfile(){
   await supabaseClient
     .from('profiles')
     .upsert({ id: currentUser.id, display_name: currentUser.email }, { onConflict: 'id' });
+}
+
+async function fetchCurrentUserProfile(){
+  if(!currentUser){ currentUserProfile = null; return; }
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('role, verified')
+    .eq('id', currentUser.id)
+    .maybeSingle();
+  currentUserProfile = error || !data ? { role:'user', verified:false } : data;
 }
 
 async function togglePreference(categoryId, checked){
@@ -2427,6 +2503,7 @@ function renderAccountSheet(){
         <h3 class="form-title" style="font-size:16px;">Preferencias</h3>
         <p class="form-sub" style="margin-top:-12px;">Elegí los tipos de evento que te interesan.</p>
         <div class="pref-list">${prefItems}</div>
+        ${hasRole('admin') ? '<button type="button" class="secondary-btn" id="adminPanelBtn" style="width:100%; margin-bottom:10px;"><i class="ti ti-shield-lock"></i>Panel de administración</button>' : ''}
         <button type="button" class="secondary-btn" id="logoutBtn" style="width:100%;"><i class="ti ti-logout"></i>Cerrar sesión</button>
       </div>
     `;
@@ -2441,6 +2518,10 @@ function renderAccountSheet(){
     });
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await supabaseClient.auth.signOut();
+    });
+    document.getElementById('adminPanelBtn')?.addEventListener('click', () => {
+      closeAccountSheet();
+      openAdminSheet();
     });
   }
 
@@ -2502,6 +2583,101 @@ async function handleForgotPassword(){
   status.textContent = error
     ? 'No se pudo enviar el link. Probá de nuevo en un rato.'
     : 'Listo, revisá tu email y tocá el link para definir una contraseña nueva.';
+}
+
+/* ---------- Admin ---------- */
+
+function openAdminSheet(){
+  renderAdminSheet();
+  openSheet(els.adminOverlay);
+}
+
+function closeAdminSheet(){
+  closeSheet(els.adminOverlay);
+}
+
+async function renderAdminSheet(){
+  const sheet = els.adminSheet;
+  sheet.innerHTML = `
+    <button type="button" class="sheet-close" id="closeAdminBtn" aria-label="Cerrar"><span class="x-mark" aria-hidden="true">&times;</span></button>
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="form-content">
+      <h2 class="form-title" id="adminTitle">Panel de administración</h2>
+      <h3 class="form-title" style="font-size:16px;">Eventos publicados</h3>
+      <div id="adminEventsList" class="my-plans-section">Cargando...</div>
+      <h3 class="form-title" style="font-size:16px; margin-top:18px;">Usuarios</h3>
+      <div id="adminUsersList" class="pref-list">Cargando...</div>
+    </div>
+  `;
+  document.getElementById('closeAdminBtn').onclick = closeAdminSheet;
+
+  const eventsList = document.getElementById('adminEventsList');
+  eventsList.innerHTML = state.events.length
+    ? state.events.map(ev => `
+      <div class="my-plan-item" data-admin-event="${ev.id}">
+        <div class="my-plan-info">
+          <div class="my-plan-title">${escapeHtml(ev.title)}</div>
+          <div class="my-plan-meta">${fmtDate(ev.date)} · ${escapeHtml(ev.organizer)}</div>
+        </div>
+        <button type="button" class="secondary-btn" data-delete-event="${ev.id}"><i class="ti ti-trash"></i></button>
+      </div>
+    `).join('')
+    : '<div class="my-plans-empty">No hay eventos publicados.</div>';
+  eventsList.querySelectorAll('[data-delete-event]').forEach(btn => {
+    btn.addEventListener('click', () => deleteEventAsAdmin(btn.dataset.deleteEvent));
+  });
+
+  const usersList = document.getElementById('adminUsersList');
+  const { data: profilesData, error } = await supabaseClient
+    .from('profiles')
+    .select('id, display_name, role, verified')
+    .order('display_name');
+  if(error || !profilesData){
+    usersList.innerHTML = '<div class="my-plans-empty">No se pudieron cargar los usuarios.</div>';
+    return;
+  }
+  usersList.innerHTML = profilesData.map(p => `
+    <div class="pref-item" data-user="${p.id}" style="align-items:center;">
+      <span style="flex:1; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(p.display_name || p.id)}</span>
+      <select data-role-select="${p.id}">
+        <option value="user" ${p.role === 'user' ? 'selected' : ''}>Usuario</option>
+        <option value="organizer" ${p.role === 'organizer' ? 'selected' : ''}>Organizador</option>
+        <option value="admin" ${p.role === 'admin' ? 'selected' : ''}>Admin</option>
+      </select>
+      <label style="display:flex; align-items:center; gap:4px; font-size:12px;">
+        Verificado
+        <input type="checkbox" data-verified-toggle="${p.id}" ${p.verified ? 'checked' : ''}>
+      </label>
+    </div>
+  `).join('');
+  usersList.querySelectorAll('[data-role-select]').forEach(select => {
+    select.addEventListener('change', () => updateUserRole(select.dataset.roleSelect, { role: select.value }));
+  });
+  usersList.querySelectorAll('[data-verified-toggle]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => updateUserRole(checkbox.dataset.verifiedToggle, { verified: checkbox.checked }));
+  });
+}
+
+async function deleteEventAsAdmin(id){
+  const { error } = await supabaseClient.from('events').delete().eq('id', id);
+  if(error){
+    showToast('No se pudo eliminar el evento');
+    return;
+  }
+  state.events = state.events.filter(ev => ev.id !== id);
+  render();
+  renderAdminSheet();
+  showToast('Evento eliminado');
+}
+
+async function updateUserRole(userId, patch){
+  const { error } = await supabaseClient.from('profiles').update(patch).eq('id', userId);
+  if(error){
+    showToast('No se pudo actualizar el usuario');
+    return;
+  }
+  if(userId === currentUser?.id) await fetchCurrentUserProfile();
+  showToast('Usuario actualizado');
 }
 
 /* ---------- Bindings / init ---------- */
@@ -2607,7 +2783,7 @@ function bindEvents(){
   });
 
   els.mapLocationBtn.addEventListener('click', requestLocation);
-  els.addEventBtn.addEventListener('click', openForm);
+  els.addEventBtn.addEventListener('click', handleAddEventClick);
   els.accountBtn.addEventListener('click', openAccountSheet);
 
   els.activateLocationBtn.addEventListener('click', () => {
@@ -2616,7 +2792,7 @@ function bindEvents(){
   });
   els.skipLocationBtn.addEventListener('click', closeLocationModal);
 
-  [els.detailOverlay, els.formOverlay, els.accountOverlay, els.locationOverlay].forEach(overlay => {
+  [els.detailOverlay, els.formOverlay, els.accountOverlay, els.adminOverlay, els.locationOverlay].forEach(overlay => {
     overlay.addEventListener('click', event => {
       if(event.target === overlay) closeSheet(overlay);
     });
@@ -2626,6 +2802,7 @@ function bindEvents(){
     if(event.key === 'Escape'){
       if(els.detailOverlay.classList.contains('open')) closeSheet(els.detailOverlay);
       if(els.formOverlay.classList.contains('open')) closeSheet(els.formOverlay);
+      if(els.adminOverlay.classList.contains('open')) closeSheet(els.adminOverlay);
       if(els.accountOverlay.classList.contains('open')) closeSheet(els.accountOverlay);
     }
   });
@@ -2681,6 +2858,8 @@ function cacheElements(){
   els.formSheet = document.getElementById('formSheet');
   els.accountOverlay = document.getElementById('accountOverlay');
   els.accountSheet = document.getElementById('accountSheet');
+  els.adminOverlay = document.getElementById('adminOverlay');
+  els.adminSheet = document.getElementById('adminSheet');
   els.locationOverlay = document.getElementById('locationOverlay');
   els.activateLocationBtn = document.getElementById('activateLocationBtn');
   els.skipLocationBtn = document.getElementById('skipLocationBtn');
@@ -2689,12 +2868,10 @@ function cacheElements(){
 
 async function init(){
   cacheElements();
-  const storedEvents = loadLocalJson(STORAGE_KEYS.events, null);
-  state.events = Array.isArray(storedEvents) && storedEvents.length ? storedEvents : SEED_EVENTS;
   state.interactions = loadLocalJson(STORAGE_KEYS.interactions, {});
-  saveLocalJson(STORAGE_KEYS.events, state.events);
   initMap();
   bindEvents();
+  await fetchEvents();
   render();
   if(!state.userLocation) window.setTimeout(openLocationModal, 400);
 
@@ -2702,6 +2879,7 @@ async function init(){
   currentUser = sessionData?.session?.user || null;
   if(currentUser){
     await ensureProfile();
+    await fetchCurrentUserProfile();
     await loadPreferences();
   }
   updateAccountBtn();
@@ -2715,9 +2893,11 @@ async function init(){
     }
     if(currentUser){
       await ensureProfile();
+      await fetchCurrentUserProfile();
       await loadPreferences();
     }else{
       userPreferences = new Set();
+      currentUserProfile = null;
     }
     updateAccountBtn();
     if(els.accountOverlay.classList.contains('open')){
