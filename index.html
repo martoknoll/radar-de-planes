@@ -2207,7 +2207,7 @@ function openForm(){
 
         <div class="field">
           <label for="fOrganizer">Organizador</label>
-          <input id="fOrganizer" type="text" maxlength="60" placeholder="Nombre del espacio, club o productor" required>
+          <input id="fOrganizer" type="text" maxlength="60" placeholder="Nombre del espacio, club o productor" value="${escapeHtml(currentUser?.email || '')}" required>
         </div>
 
         <div class="field">
