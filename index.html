@@ -2144,6 +2144,10 @@ function closeSheet(overlay){
     formMarker = null;
     editingEventId = null;
   }
+  if(overlay === els.formOverlay && reopenAdminAfterForm){
+    reopenAdminAfterForm = false;
+    openAdminSheet();
+  }
 }
 
 function handleAddEventClick(){
@@ -2160,6 +2164,7 @@ function handleAddEventClick(){
 }
 
 let editingEventId = null;
+let reopenAdminAfterForm = false;
 
 function openForm(eventToEdit){
   editingEventId = eventToEdit ? eventToEdit.id : null;
@@ -2704,7 +2709,10 @@ async function renderAdminSheet(){
   eventsList.querySelectorAll('[data-edit-event]').forEach(btn => {
     btn.addEventListener('click', () => {
       const ev = state.events.find(e => e.id === btn.dataset.editEvent);
-      if(ev) openForm(ev);
+      if(!ev) return;
+      reopenAdminAfterForm = true;
+      closeSheet(els.adminOverlay);
+      openForm(ev);
     });
   });
   eventsList.querySelectorAll('[data-delete-event]').forEach(btn => {
