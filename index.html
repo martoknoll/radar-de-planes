@@ -1327,6 +1327,7 @@
 const SUPABASE_URL = 'https://fxywhalfwhhqzggayswc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4eXdoYWxmd2hocXpnZ2F5c3djIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjY0MjgsImV4cCI6MjA5NzgwMjQyOH0.2xQJv4kyTeR1P_LO9FAM3IJzYvtLR5KulLyi2lc28iQ';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const isPasswordRecoveryLink = /type=recovery/.test(window.location.hash);
 
 const STORAGE_KEYS = {
   events:'radarPlanes.events.v2',
@@ -2937,6 +2938,10 @@ async function init(){
     await loadFollowing();
   }
   updateAccountBtn();
+  if(isPasswordRecoveryLink && currentUser){
+    passwordRecoveryMode = true;
+    openAccountSheet();
+  }
 
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     currentUser = session?.user || null;
