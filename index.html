@@ -2927,7 +2927,7 @@ async function init(){
   bindEvents();
   await fetchEvents();
   render();
-  if(!state.userLocation) window.setTimeout(openLocationModal, 400);
+  if(!state.userLocation && !isPasswordRecoveryLink) window.setTimeout(openLocationModal, 400);
 
   const { data: sessionData } = await supabaseClient.auth.getSession();
   currentUser = sessionData?.session?.user || null;
