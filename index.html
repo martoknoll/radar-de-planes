@@ -2080,6 +2080,9 @@ function openDetail(id){
   `;
 
   openSheet(els.detailOverlay);
+  const url = new URL(window.location.href);
+  url.searchParams.set('evento', id);
+  window.history.pushState({eventoId:id}, '', url);
   document.getElementById('closeDetailBtn').addEventListener('click', () => closeSheet(els.detailOverlay));
   document.getElementById('interestBtn').addEventListener('click', () => toggleInterest(id));
   document.getElementById('goingBtn').addEventListener('click', () => toggleGoing(id));
@@ -2111,8 +2114,10 @@ function openRoute(ev){
 }
 
 async function shareEvent(ev){
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.lat + ',' + ev.lng)}`;
-  const text = `${ev.title}\n${fmtDate(ev.date)} · ${ev.time}\n${ev.address}\n${mapsUrl}`;
+  const eventUrl = new URL(window.location.href);
+  eventUrl.search = '';
+  eventUrl.searchParams.set('evento', ev.id);
+  const text = `${ev.title}\n${fmtDate(ev.date)} · ${ev.time}\n${ev.address}\n${eventUrl}`;
   try{
     if(navigator.share){
       await navigator.share({title:ev.title, text});
@@ -2147,6 +2152,11 @@ function closeSheet(overlay){
   if(overlay === els.formOverlay && reopenAdminAfterForm){
     reopenAdminAfterForm = false;
     openAdminSheet();
+  }
+  if(overlay === els.detailOverlay && new URL(window.location.href).searchParams.has('evento')){
+    const url = new URL(window.location.href);
+    url.searchParams.delete('evento');
+    window.history.replaceState({}, '', url);
   }
 }
 
@@ -2966,6 +2976,14 @@ async function init(){
   await fetchEvents();
   render();
   if(!state.userLocation && !isPasswordRecoveryLink) window.setTimeout(requestLocation, 400);
+
+  const sharedEventId = new URL(window.location.href).searchParams.get('evento');
+  if(sharedEventId && state.events.some(ev => ev.id === sharedEventId)) openDetail(sharedEventId);
+  window.addEventListener('popstate', () => {
+    const id = new URL(window.location.href).searchParams.get('evento');
+    if(id && state.events.some(ev => ev.id === id)) openDetail(id);
+    else if(els.detailOverlay.classList.contains('open')) closeSheet(els.detailOverlay);
+  });
 
   const { data: sessionData } = await supabaseClient.auth.getSession();
   currentUser = sessionData?.session?.user || null;
