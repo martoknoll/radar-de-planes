@@ -1715,9 +1715,6 @@ function getFilteredEvents(){
     }));
 
   list.sort((a,b) => {
-    if(state.sortBy === 'distance' && state.userLocation){
-      return (a._dist ?? 9999) - (b._dist ?? 9999);
-    }
     if(state.sortBy === 'price'){
       const freeDiff = Number(isFree(b.price)) - Number(isFree(a.price));
       if(freeDiff !== 0) return freeDiff;
