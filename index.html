@@ -2142,6 +2142,7 @@ function closeSheet(overlay){
     formMap.remove();
     formMap = null;
     formMarker = null;
+    editingEventId = null;
   }
 }
 
@@ -2158,19 +2159,22 @@ function handleAddEventClick(){
   openForm();
 }
 
-function openForm(){
-  const options = CATEGORIES.map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('');
+let editingEventId = null;
+
+function openForm(eventToEdit){
+  editingEventId = eventToEdit ? eventToEdit.id : null;
+  const options = CATEGORIES.map(cat => `<option value="${cat.id}" ${eventToEdit && eventToEdit.category === cat.id ? 'selected' : ''}>${cat.label}</option>`).join('');
   els.formSheet.innerHTML = `
     <button type="button" class="sheet-close" id="closeFormBtn" aria-label="Cerrar formulario"><span class="x-mark" aria-hidden="true">&times;</span></button>
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="form-content">
-      <h2 class="form-title" id="formTitle">Sumar un plan</h2>
-      <p class="form-sub">El evento se publica para todos los usuarios y aparece al instante en el mapa.</p>
+      <h2 class="form-title" id="formTitle">${eventToEdit ? 'Editar plan' : 'Sumar un plan'}</h2>
+      <p class="form-sub">${eventToEdit ? 'Los cambios se actualizan al instante para todos los usuarios.' : 'El evento se publica para todos los usuarios y aparece al instante en el mapa.'}</p>
 
       <form id="eventForm" novalidate>
         <div class="field">
           <label for="fTitle">Título</label>
-          <input id="fTitle" type="text" maxlength="80" placeholder="Ej: Escucha de discos en Chacarita" required>
+          <input id="fTitle" type="text" maxlength="80" placeholder="Ej: Escucha de discos en Chacarita" value="${escapeHtml(eventToEdit?.title || '')}" required>
         </div>
 
         <div class="field-row">
@@ -2180,25 +2184,25 @@ function openForm(){
           </div>
           <div class="field">
             <label for="fPrice">Precio</label>
-            <input id="fPrice" type="text" maxlength="24" placeholder="Gratis / $5000" required>
+            <input id="fPrice" type="text" maxlength="24" placeholder="Gratis / $5000" value="${escapeHtml(eventToEdit?.price || '')}" required>
           </div>
         </div>
 
         <div class="field-row">
           <div class="field">
             <label for="fDate">Fecha</label>
-            <input id="fDate" type="date" min="${todayStr()}" value="${todayStr()}" required>
+            <input id="fDate" type="date" min="${todayStr()}" value="${eventToEdit?.date || todayStr()}" required>
           </div>
           <div class="field">
             <label for="fTime">Hora</label>
-            <input id="fTime" type="time" required>
+            <input id="fTime" type="time" value="${eventToEdit?.time || ''}" required>
           </div>
         </div>
 
         <div class="field">
           <label for="fAddress">Dirección <em>se busca en el mapa</em></label>
           <div class="address-row">
-            <input id="fAddress" type="text" placeholder="Ej: Av. Corrientes 1234, CABA" required>
+            <input id="fAddress" type="text" placeholder="Ej: Av. Corrientes 1234, CABA" value="${escapeHtml(eventToEdit?.address || '')}" required>
             <button type="button" class="secondary-btn" id="geocodeBtn"><i class="ti ti-map-search"></i></button>
           </div>
           <div class="geocode-status" id="geocodeStatus">Escribí una dirección y tocá el ícono para ubicarla.</div>
@@ -2212,21 +2216,21 @@ function openForm(){
 
         <div class="field">
           <label for="fOrganizer">Organizador</label>
-          <input id="fOrganizer" type="text" maxlength="60" placeholder="Nombre del espacio, club o productor" value="${escapeHtml(currentUser?.email || '')}" required>
+          <input id="fOrganizer" type="text" maxlength="60" placeholder="Nombre del espacio, club o productor" value="${escapeHtml(eventToEdit?.organizer ?? currentUser?.email ?? '')}" required>
         </div>
 
         <div class="field">
           <label for="fDesc">Descripción</label>
-          <textarea id="fDesc" maxlength="360" placeholder="Contá de qué se trata, qué incluye y si hace falta reservar." required></textarea>
+          <textarea id="fDesc" maxlength="360" placeholder="Contá de qué se trata, qué incluye y si hace falta reservar." required>${escapeHtml(eventToEdit?.desc || '')}</textarea>
         </div>
 
         <div class="field">
           <label for="fImg">Imagen <em>opcional</em></label>
-          <input id="fImg" type="url" placeholder="https://...">
+          <input id="fImg" type="url" placeholder="https://..." value="${escapeHtml(eventToEdit?.img || '')}">
         </div>
 
         <div class="form-submit-row">
-          <button type="submit" class="submit-btn">Publicar plan en el radar</button>
+          <button type="submit" class="submit-btn">${eventToEdit ? 'Guardar cambios' : 'Publicar plan en el radar'}</button>
         </div>
       </form>
     </div>
@@ -2242,12 +2246,12 @@ function openForm(){
       geocodeAddress();
     }
   });
-  initFormMap();
+  initFormMap(eventToEdit);
 }
 
-function initFormMap(){
-  const start = state.userLocation ? [state.userLocation.lat, state.userLocation.lng] : BA_CENTER;
-  formMap = L.map('formMap', {zoomControl:true, attributionControl:false}).setView(start, 14);
+function initFormMap(eventToEdit){
+  const start = eventToEdit ? [eventToEdit.lat, eventToEdit.lng] : state.userLocation ? [state.userLocation.lat, state.userLocation.lng] : BA_CENTER;
+  formMap = L.map('formMap', {zoomControl:true, attributionControl:false}).setView(start, eventToEdit ? 16 : 14);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(formMap);
   const icon = L.divIcon({className:'', html:'<div class="pin"><i class="ti ti-map-pin-plus"></i></div>', iconSize:[34,34], iconAnchor:[17,17]});
   formMarker = L.marker(start, {icon, draggable:true}).addTo(formMap);
@@ -2321,29 +2325,48 @@ async function handleFormSubmit(event){
     description:document.getElementById('fDesc').value.trim(),
     img:validateImageUrl(document.getElementById('fImg').value.trim()) || FALLBACK_IMG,
     lat:pos.lat,
-    lng:pos.lng,
-    created_by:currentUser.id
+    lng:pos.lng
   };
   const submitBtn = form.querySelector('.submit-btn');
   submitBtn.disabled = true;
-  const { data, error } = await supabaseClient
-    .from('events')
-    .insert(row)
-    .select('*, creator:profiles!events_created_by_fkey(verified)')
-    .single();
+  let data, error;
+  if(editingEventId){
+    ({ data, error } = await supabaseClient
+      .from('events')
+      .update(row)
+      .eq('id', editingEventId)
+      .select('*, creator:profiles!events_created_by_fkey(verified)')
+      .single());
+  }else{
+    row.created_by = currentUser.id;
+    ({ data, error } = await supabaseClient
+      .from('events')
+      .insert(row)
+      .select('*, creator:profiles!events_created_by_fkey(verified)')
+      .single());
+  }
   submitBtn.disabled = false;
   if(error || !data){
-    showToast('No se pudo publicar el plan. Probá de nuevo.');
+    showToast(editingEventId ? 'No se pudo guardar el evento. Probá de nuevo.' : 'No se pudo publicar el plan. Probá de nuevo.');
     return;
   }
-  const newEvent = rowToEvent(data);
-  state.events.unshift(newEvent);
+  const savedEvent = rowToEvent(data);
+  if(editingEventId){
+    state.events = state.events.map(ev => ev.id === savedEvent.id ? savedEvent : ev);
+    editingEventId = null;
+    closeSheet(els.formOverlay);
+    render();
+    if(els.adminOverlay.classList.contains('open')) renderAdminSheet();
+    showToast('Evento actualizado');
+    return;
+  }
+  state.events.unshift(savedEvent);
   state.activeCategories = ['todos'];
   state.dateFilter = daysUntil(dateValue) === 0 ? 'hoy' : 'todos';
   state.freeOnly = false;
   closeSheet(els.formOverlay);
   render();
-  selectOnMap(newEvent.id);
+  selectOnMap(savedEvent.id);
   showToast('Plan publicado en el radar');
 }
 
@@ -2673,10 +2696,17 @@ async function renderAdminSheet(){
           <div class="my-plan-title">${escapeHtml(ev.title)}</div>
           <div class="my-plan-meta">${fmtDate(ev.date)} · ${escapeHtml(ev.organizer)}</div>
         </div>
+        <button type="button" class="secondary-btn" data-edit-event="${ev.id}"><i class="ti ti-edit"></i></button>
         <button type="button" class="secondary-btn" data-delete-event="${ev.id}"><i class="ti ti-trash"></i></button>
       </div>
     `).join('')
     : '<div class="my-plans-empty">No hay eventos publicados.</div>';
+  eventsList.querySelectorAll('[data-edit-event]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ev = state.events.find(e => e.id === btn.dataset.editEvent);
+      if(ev) openForm(ev);
+    });
+  });
   eventsList.querySelectorAll('[data-delete-event]').forEach(btn => {
     btn.addEventListener('click', () => deleteEventAsAdmin(btn.dataset.deleteEvent));
   });
