@@ -1491,6 +1491,7 @@ let currentUser = null;
 let currentUserProfile = null;
 let passwordRecoveryMode = false;
 let userPreferences = new Set();
+let userFollowing = new Set();
 
 function hasRole(...roles){
   return !!currentUserProfile && roles.includes(currentUserProfile.role);
@@ -2060,6 +2061,7 @@ function openDetail(id){
       <div class="organizer-box">
         <span class="avatar">${escapeHtml(String(ev.organizer || 'RP').slice(0,2).toUpperCase())}</span>
         <span><small>Organiza</small><strong>${escapeHtml(ev.organizer || 'Sin dato')}${ev.verified ? ' <i class="ti ti-rosette-discount-check verified-badge" title="Organizador verificado"></i>' : ''}</strong></span>
+        ${canFollowPublisher(ev) ? `<button type="button" class="secondary-btn" id="followBtn" style="margin-left:auto;">${userFollowing.has(ev.createdBy) ? '<i class="ti ti-user-check"></i>Siguiendo' : '<i class="ti ti-user-plus"></i>Seguir'}</button>` : ''}
       </div>
     </div>
     <div class="detail-actions">
@@ -2082,6 +2084,7 @@ function openDetail(id){
   document.getElementById('routeBtn').addEventListener('click', () => openRoute(ev));
   document.getElementById('shareBtn').addEventListener('click', () => shareEvent(ev));
   document.getElementById('reportBtn').addEventListener('click', () => showToast('Gracias. Marcamos este plan para revisar.'));
+  document.getElementById('followBtn')?.addEventListener('click', () => toggleFollow(ev.createdBy).then(() => openDetail(id)));
   renderMap(getFilteredEvents());
 }
 
@@ -2353,6 +2356,32 @@ async function loadPreferences(){
   userPreferences = error || !data ? new Set() : new Set(data.map(r => r.category_id));
 }
 
+function canFollowPublisher(ev){
+  return !!currentUser && !!ev.createdBy && ev.createdBy !== currentUser.id;
+}
+
+async function loadFollowing(){
+  if(!currentUser){ userFollowing = new Set(); return; }
+  const { data, error } = await supabaseClient
+    .from('follows')
+    .select('followed_id')
+    .eq('follower_id', currentUser.id);
+  userFollowing = error || !data ? new Set() : new Set(data.map(r => r.followed_id));
+}
+
+async function toggleFollow(followedId){
+  if(!currentUser || !followedId) return;
+  if(userFollowing.has(followedId)){
+    userFollowing.delete(followedId);
+    await supabaseClient.from('follows').delete().eq('follower_id', currentUser.id).eq('followed_id', followedId);
+    showToast('Dejaste de seguir a este organizador');
+  }else{
+    userFollowing.add(followedId);
+    await supabaseClient.from('follows').upsert({ follower_id: currentUser.id, followed_id: followedId });
+    showToast('Ahora seguís a este organizador');
+  }
+}
+
 async function ensureProfile(){
   if(!currentUser) return;
   await supabaseClient
@@ -2394,7 +2423,7 @@ function closeAccountSheet(){
   closeSheet(els.accountOverlay);
 }
 
-function renderAccountSheet(){
+async function renderAccountSheet(){
   const sheet = els.accountSheet;
 
   if(passwordRecoveryMode){
@@ -2490,6 +2519,20 @@ function renderAccountSheet(){
       `;}).join('')
       : `<div class="my-plans-empty">Todavía no marcaste planes como "me interesa" o "voy".</div>`;
 
+    let followingHtml = '<div class="my-plans-empty">No seguís a ningún organizador todavía.</div>';
+    if(userFollowing.size){
+      const { data: followedProfiles } = await supabaseClient
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', [...userFollowing]);
+      followingHtml = (followedProfiles || []).map(p => `
+        <div class="my-plan-item" data-unfollow="${p.id}">
+          <div class="my-plan-info"><div class="my-plan-title">${escapeHtml(p.display_name || p.id)}</div></div>
+          <button type="button" class="secondary-btn" data-unfollow-btn="${p.id}"><i class="ti ti-user-minus"></i></button>
+        </div>
+      `).join('');
+    }
+
     sheet.innerHTML = `
       <button type="button" class="sheet-close" id="closeAccount" aria-label="Cerrar"><span class="x-mark" aria-hidden="true">&times;</span></button>
       <div class="sheet-handle" aria-hidden="true"></div>
@@ -2499,6 +2542,9 @@ function renderAccountSheet(){
 
         <h3 class="form-title" style="font-size:16px; margin-top:18px;">Mis planes</h3>
         <div class="my-plans-section">${myPlansHtml}</div>
+
+        <h3 class="form-title" style="font-size:16px;">Organizadores que seguís</h3>
+        <div class="my-plans-section">${followingHtml}</div>
 
         <h3 class="form-title" style="font-size:16px;">Preferencias</h3>
         <p class="form-sub" style="margin-top:-12px;">Elegí los tipos de evento que te interesan.</p>
@@ -2514,6 +2560,12 @@ function renderAccountSheet(){
       item.addEventListener('click', () => {
         closeAccountSheet();
         openDetail(item.dataset.id);
+      });
+    });
+    sheet.querySelectorAll('[data-unfollow-btn]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await toggleFollow(btn.dataset.unfollowBtn);
+        renderAccountSheet();
       });
     });
     document.getElementById('logoutBtn').addEventListener('click', async () => {
@@ -2881,6 +2933,7 @@ async function init(){
     await ensureProfile();
     await fetchCurrentUserProfile();
     await loadPreferences();
+    await loadFollowing();
   }
   updateAccountBtn();
 
@@ -2895,8 +2948,10 @@ async function init(){
       await ensureProfile();
       await fetchCurrentUserProfile();
       await loadPreferences();
+      await loadFollowing();
     }else{
       userPreferences = new Set();
+      userFollowing = new Set();
       currentUserProfile = null;
     }
     updateAccountBtn();
