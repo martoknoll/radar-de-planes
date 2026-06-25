@@ -122,4 +122,10 @@ Pensando en que el objetivo es validar si la falta de información es la barrera
 
 ---
 
+## Backlog (para más tarde, no priorizado todavía)
+
+- [ ] **Preview rica al compartir un evento (Open Graph / meta tags dinámicos)**: hoy el link de `?evento=id` abre el modal correcto, pero al compartirlo en WhatsApp/redes se ve como link pelado sin imagen ni texto, porque GitHub Pages sirve el mismo `index.html` estático a todos (no hay SSR). Para resolverlo bien haría falta una Edge Function que detecte bots/crawlers y les sirva HTML con OG tags por evento, redirigiendo a usuarios reales a la SPA. Tiene sentido resolverlo junto con el punto 5 del Top 5 (dominio propio + Resend), reusando esa misma infraestructura, una vez haya tráfico real para justificarlo.
+
+---
+
 Quedo a la espera de tu confirmación antes de abrir cualquier branch o PR con fixes.
