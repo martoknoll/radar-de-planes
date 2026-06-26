@@ -2755,20 +2755,7 @@ async function renderAccountSheet(){
 
     const myPlans = getMyPlans();
     const myPlansHtml = myPlans.length
-      ? myPlans.map(ev => {
-        const interaction = getInteraction(ev.id);
-        let badges = '';
-        if(interaction.going) badges += '<span class="my-plan-badge going">Voy</span>';
-        if(interaction.interested) badges += '<span class="my-plan-badge interested">Me interesa</span>';
-        return `
-        <div class="my-plan-item" data-id="${ev.id}">
-          <div class="my-plan-info">
-            <div class="my-plan-title">${escapeHtml(ev.title)}</div>
-            <div class="my-plan-meta">${fmtDate(ev.date)} · ${ev.time}</div>
-          </div>
-          <div class="my-plan-badges">${badges}</div>
-        </div>
-      `;}).join('')
+      ? myPlans.map(ev => eventCardHtml(ev)).join('')
       : `<div class="my-plans-empty">Todavía no marcaste planes como "me interesa" o "voy".</div>`;
 
     let followingHtml = '<div class="my-plans-empty">No seguís a ningún organizador todavía.</div>';
@@ -2829,7 +2816,7 @@ async function renderAccountSheet(){
         </div>
 
         <h3 class="form-title" style="font-size:16px;">Mis planes</h3>
-        <div class="my-plans-section">${myPlansHtml}</div>
+        <div class="my-plans-section cards" id="myPlansCards">${myPlansHtml}</div>
 
         <h3 class="form-title" style="font-size:16px;">Organizadores que seguís</h3>
         <div class="my-plans-section">${followingHtml}</div>
@@ -2850,6 +2837,13 @@ async function renderAccountSheet(){
     `;
     sheet.querySelectorAll('.pref-item input').forEach(input => {
       input.addEventListener('change', () => togglePreference(input.dataset.category, input.checked));
+    });
+    document.getElementById('myPlansCards')?.querySelectorAll('[data-card-id]').forEach(card => {
+      card.addEventListener('click', (event) => {
+        event.stopPropagation();
+        closeAccountSheet();
+        openDetail(card.dataset.cardId);
+      });
     });
     sheet.querySelectorAll('.my-plan-item').forEach(item => {
       item.addEventListener('click', () => {
