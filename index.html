@@ -1215,6 +1215,9 @@
       .search-box:not(.expanded){width:38px; min-width:38px; flex:0 0 auto; border-color:transparent; background:transparent;}
       .search-box:not(.expanded) input{width:0; padding:0; opacity:0;}
       .search-box.expanded{flex:1 1 160px;}
+      .filters-search{flex:0 0 auto; min-width:0;}
+      .filters-search:has(.search-box.expanded){flex:1 1 160px;}
+      #dateFilterDropdown{flex:1 1 90px; min-width:90px;}
     }
 
     @media (max-width:430px){
