@@ -1757,9 +1757,18 @@ function getMyPlans(){
   return state.events
     .filter(ev => {
       const i = getInteraction(ev.id);
-      return i.interested || i.going;
+      return (i.interested || i.going) && daysUntil(ev.date) >= 0;
     })
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+
+function getMyPlansHistory(){
+  return state.events
+    .filter(ev => {
+      const i = getInteraction(ev.id);
+      return (i.interested || i.going) && daysUntil(ev.date) < 0;
+    })
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
 }
 
 function showToast(message){
@@ -2758,6 +2767,11 @@ async function renderAccountSheet(){
       ? myPlans.map(ev => eventCardHtml(ev)).join('')
       : `<div class="my-plans-empty">Todavía no marcaste planes como "me interesa" o "voy".</div>`;
 
+    const myPlansHistory = getMyPlansHistory();
+    const myPlansHistoryHtml = myPlansHistory.length
+      ? myPlansHistory.map(ev => eventCardHtml(ev)).join('')
+      : `<div class="my-plans-empty">Todavía no tenés planes pasados.</div>`;
+
     let followingHtml = '<div class="my-plans-empty">No seguís a ningún organizador todavía.</div>';
     if(userFollowing.size){
       const { data: followedProfiles } = await supabaseClient
@@ -2818,6 +2832,16 @@ async function renderAccountSheet(){
         <h3 class="form-title" style="font-size:16px;">Mis planes</h3>
         <div class="my-plans-section cards" id="myPlansCards">${myPlansHtml}</div>
 
+        <details class="pref-dropdown">
+          <summary>
+            <i class="ti ti-history"></i>
+            <span>Historial de planes</span>
+            <span class="pref-dropdown-count">${myPlansHistory.length || 'ninguno'}</span>
+            <i class="ti ti-chevron-down chevron"></i>
+          </summary>
+          <div class="my-plans-section cards" id="myPlansHistoryCards" style="margin-top:10px;">${myPlansHistoryHtml}</div>
+        </details>
+
         <h3 class="form-title" style="font-size:16px;">Organizadores que seguís</h3>
         <div class="my-plans-section">${followingHtml}</div>
 
@@ -2838,7 +2862,7 @@ async function renderAccountSheet(){
     sheet.querySelectorAll('.pref-item input').forEach(input => {
       input.addEventListener('change', () => togglePreference(input.dataset.category, input.checked));
     });
-    document.getElementById('myPlansCards')?.querySelectorAll('[data-card-id]').forEach(card => {
+    document.querySelectorAll('#myPlansCards [data-card-id], #myPlansHistoryCards [data-card-id]').forEach(card => {
       card.addEventListener('click', (event) => {
         event.stopPropagation();
         closeAccountSheet();
