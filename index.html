@@ -154,6 +154,15 @@
       gap:8px;
       flex:0 0 auto;
     }
+    .welcome-label{
+      font-size:13px;
+      font-weight:600;
+      color:var(--text);
+      white-space:nowrap;
+    }
+    @media (max-width:560px){
+      .welcome-label{display:none;}
+    }
     .icon-btn,
     .account-btn,
     .chip,
@@ -1248,6 +1257,7 @@
           </div>
         </div>
         <div class="header-actions">
+          <span class="welcome-label" id="welcomeLabel" hidden></span>
           <button type="button" class="account-btn" id="accountBtn" aria-label="Mi cuenta"><span class="user-mark" aria-hidden="true"></span></button>
         </div>
       </div>
@@ -2056,11 +2066,7 @@ function render(){
 function renderLocationStatus(){
   const hasLocation = !!state.userLocation;
   els.mapStatus.hidden = hasLocation;
-  if(currentUser && currentUserProfile?.first_name){
-    els.locationLabel.textContent = `Bienvenido, ${currentUserProfile.first_name}`;
-  }else{
-    els.locationLabel.textContent = hasLocation ? 'Cerca de tu ubicación' : 'Qué está pasando cerca tuyo';
-  }
+  els.locationLabel.textContent = hasLocation ? 'Cerca de tu ubicación' : 'Qué está pasando cerca tuyo';
   els.sortSelect.querySelector('option[value="distance"]').disabled = !hasLocation;
   if(!hasLocation && state.sortBy === 'distance'){
     state.sortBy = 'date';
@@ -2627,7 +2633,12 @@ async function togglePreference(categoryId, checked){
 
 function updateAccountBtn(){
   els.accountBtn.classList.toggle('logged-in', !!currentUser);
-  renderLocationStatus();
+  if(currentUser && currentUserProfile?.first_name){
+    els.welcomeLabel.textContent = `Bienvenido, ${currentUserProfile.first_name}`;
+    els.welcomeLabel.hidden = false;
+  }else{
+    els.welcomeLabel.hidden = true;
+  }
 }
 
 function openAccountSheet(){
@@ -2890,6 +2901,7 @@ async function renderAccountSheet(){
         return;
       }
       editingProfile = false;
+      updateAccountBtn();
       renderAccountSheet();
       showToast('Perfil actualizado');
     });
@@ -3325,6 +3337,7 @@ function cacheElements(){
   els.app = document.getElementById('app');
   els.locationLabel = document.getElementById('locationLabel');
   els.accountBtn = document.getElementById('accountBtn');
+  els.welcomeLabel = document.getElementById('welcomeLabel');
   els.searchInput = document.getElementById('searchInput');
   els.clearSearchBtn = document.getElementById('clearSearchBtn');
   els.searchBox = document.getElementById('searchBox');
