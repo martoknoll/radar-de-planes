@@ -2588,23 +2588,25 @@ async function fetchCurrentUserProfile(){
   if(!currentUser){ currentUserProfile = null; return; }
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('role, verified, display_name, avatar_url, username, first_name, last_name')
+    .select('role, verified, display_name, avatar_url, username, first_name, last_name, bio')
     .eq('id', currentUser.id)
     .maybeSingle();
-  currentUserProfile = error || !data ? { role:'user', verified:false, display_name:currentUser.email, avatar_url:null, username:null, first_name:null, last_name:null } : data;
+  currentUserProfile = error || !data ? { role:'user', verified:false, display_name:currentUser.email, avatar_url:null, username:null, first_name:null, last_name:null, bio:null } : data;
 }
 
-async function updateProfile(firstName, lastName, username){
+async function updateProfile(firstName, lastName, username, bio){
   if(!currentUser) return { error: 'Completá nombre, apellido y nombre de usuario.' };
   firstName = firstName.trim();
   lastName = lastName.trim();
   username = username.trim();
+  bio = (bio || '').trim();
   if(!firstName || !lastName || !username) return { error: 'Completá nombre, apellido y nombre de usuario.' };
   if(!/^[a-zA-Z0-9_]+$/.test(username)) return { error: 'El nombre de usuario solo puede tener letras, números y guion bajo.' };
   const { error } = await supabaseClient.from('profiles').update({
     first_name: firstName,
     last_name: lastName,
     username,
+    bio: bio || null,
     display_name: `${firstName} ${lastName}`.trim()
   }).eq('id', currentUser.id);
   if(error){
@@ -2613,6 +2615,7 @@ async function updateProfile(firstName, lastName, username){
   currentUserProfile.first_name = firstName;
   currentUserProfile.last_name = lastName;
   currentUserProfile.username = username;
+  currentUserProfile.bio = bio || null;
   currentUserProfile.display_name = `${firstName} ${lastName}`.trim();
   return { error: null };
 }
@@ -2833,6 +2836,10 @@ async function renderAccountSheet(){
                 <label for="editUsername">Nombre de usuario</label>
                 <input type="text" id="editUsername" maxlength="24" pattern="[a-zA-Z0-9_]+" value="${escapeHtml(currentUserProfile?.username || '')}">
               </div>
+              <div class="field" style="margin-bottom:6px;">
+                <label for="editBio">Descripción</label>
+                <textarea id="editBio" maxlength="280" rows="3" placeholder="Contales a los demás quién sos">${escapeHtml(currentUserProfile?.bio || '')}</textarea>
+              </div>
               <p class="form-note" id="editProfileStatus"></p>
               <div style="display:flex; gap:8px;">
                 <button type="button" class="primary-btn" id="saveProfileBtn" style="flex:1;">Guardar</button>
@@ -2934,8 +2941,9 @@ async function renderAccountSheet(){
       const firstName = document.getElementById('editFirstName').value;
       const lastName = document.getElementById('editLastName').value;
       const username = document.getElementById('editUsername').value;
+      const bio = document.getElementById('editBio').value;
       status.textContent = 'Guardando...';
-      const { error } = await updateProfile(firstName, lastName, username);
+      const { error } = await updateProfile(firstName, lastName, username, bio);
       if(error){
         status.textContent = error;
         return;
@@ -3045,7 +3053,7 @@ function closeAdminSheet(){
 async function renderAdminSheet(){
   const sheet = els.adminSheet;
   sheet.innerHTML = `
-    <button type="button" class="sheet-close" id="closeAdminBtn" aria-label="Cerrar"><i class="ti ti-x" aria-hidden="true"></i></button>
+    <button type="button" class="sheet-close" id="closeAdminBtn" aria-label="Cerrar"><span class="x-mark" aria-hidden="true">&times;</span></button>
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="form-content">
       <h2 class="form-title" id="adminTitle">Panel de administración</h2>
@@ -3173,7 +3181,7 @@ function closeMyEventsSheet(){
 async function renderMyEventsSheet(){
   const sheet = els.myEventsSheet;
   sheet.innerHTML = `
-    <button type="button" class="sheet-close" id="closeMyEventsBtn" aria-label="Cerrar"><i class="ti ti-x" aria-hidden="true"></i></button>
+    <button type="button" class="sheet-close" id="closeMyEventsBtn" aria-label="Cerrar"><span class="x-mark" aria-hidden="true">&times;</span></button>
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="form-content">
       <h2 class="form-title" id="myEventsTitle">Mis eventos creados</h2>
@@ -3238,10 +3246,12 @@ function closeOrganizerSheet(){
 async function renderOrganizerSheet(organizerId){
   const sheet = els.organizerSheet;
   sheet.innerHTML = `
-    <button type="button" class="sheet-close" id="closeOrganizerBtn" aria-label="Cerrar"><i class="ti ti-x" aria-hidden="true"></i></button>
+    <button type="button" class="sheet-close" id="closeOrganizerBtn" aria-label="Cerrar"><span class="x-mark" aria-hidden="true">&times;</span></button>
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="form-content">
+      <div id="organizerHeader" style="display:flex; align-items:center; gap:12px; margin-bottom:10px;"></div>
       <h2 class="form-title" id="organizerTitle">Organizador</h2>
+      <p id="organizerBio" class="form-note" style="margin-bottom:10px;"></p>
       <div id="organizerEventsList" class="my-plans-section cards">Cargando...</div>
     </div>
   `;
@@ -3249,25 +3259,34 @@ async function renderOrganizerSheet(organizerId){
 
   const { data: profile } = await supabaseClient
     .from('profiles')
-    .select('id, display_name, username, verified')
+    .select('id, display_name, username, verified, avatar_url, bio')
     .eq('id', organizerId)
     .maybeSingle();
 
   const title = document.getElementById('organizerTitle');
   title.innerHTML = `${escapeHtml(profile?.display_name || 'Organizador')}${profile?.verified ? ' <i class="ti ti-rosette-discount-check verified-badge" title="Organizador verificado"></i>' : ''}`;
 
+  const header = document.getElementById('organizerHeader');
+  const name = profile?.display_name || (profile?.username ? '@' + profile.username : 'Organizador');
+  const initials = escapeHtml(String(name).slice(0,2).toUpperCase());
+  header.innerHTML = profile?.avatar_url
+    ? `<img src="${escapeHtml(profile.avatar_url)}" alt="" style="width:56px; height:56px; border-radius:50%; object-fit:cover; flex:none;">`
+    : `<div style="width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; flex:none;">${initials}</div>`;
+
+  document.getElementById('organizerBio').textContent = profile?.bio || '';
+
   if(currentUser && currentUser.id !== organizerId){
     const followBtn = document.createElement('button');
     followBtn.type = 'button';
-    followBtn.className = 'secondary-btn';
+    followBtn.className = 'secondary-btn admin-event-btn';
     followBtn.id = 'organizerFollowBtn';
     followBtn.style.marginBottom = '14px';
-    followBtn.innerHTML = userFollowing.has(organizerId) ? '<i class="ti ti-user-check"></i>Siguiendo' : '<i class="ti ti-user-plus"></i>Seguir';
+    followBtn.innerHTML = userFollowing.has(organizerId) ? 'Dejar de seguir' : '<i class="ti ti-user-plus"></i>Seguir';
     followBtn.addEventListener('click', async () => {
       await toggleFollow(organizerId);
-      followBtn.innerHTML = userFollowing.has(organizerId) ? '<i class="ti ti-user-check"></i>Siguiendo' : '<i class="ti ti-user-plus"></i>Seguir';
+      followBtn.innerHTML = userFollowing.has(organizerId) ? 'Dejar de seguir' : '<i class="ti ti-user-plus"></i>Seguir';
     });
-    title.insertAdjacentElement('afterend', followBtn);
+    document.getElementById('organizerBio').insertAdjacentElement('afterend', followBtn);
   }
 
   const list = document.getElementById('organizerEventsList');
