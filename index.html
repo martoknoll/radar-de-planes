@@ -2056,7 +2056,11 @@ function render(){
 function renderLocationStatus(){
   const hasLocation = !!state.userLocation;
   els.mapStatus.hidden = hasLocation;
-  els.locationLabel.textContent = hasLocation ? 'Cerca de tu ubicación' : 'Qué está pasando cerca tuyo';
+  if(currentUser && currentUserProfile?.first_name){
+    els.locationLabel.textContent = `Bienvenido, ${currentUserProfile.first_name}`;
+  }else{
+    els.locationLabel.textContent = hasLocation ? 'Cerca de tu ubicación' : 'Qué está pasando cerca tuyo';
+  }
   els.sortSelect.querySelector('option[value="distance"]').disabled = !hasLocation;
   if(!hasLocation && state.sortBy === 'distance'){
     state.sortBy = 'date';
@@ -2623,6 +2627,7 @@ async function togglePreference(categoryId, checked){
 
 function updateAccountBtn(){
   els.accountBtn.classList.toggle('logged-in', !!currentUser);
+  renderLocationStatus();
 }
 
 function openAccountSheet(){
