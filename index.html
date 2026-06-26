@@ -1683,6 +1683,7 @@ function rowToEvent(row){
     organizer: row.organizer,
     desc: row.description,
     img: row.img,
+    ticketUrl: row.ticket_url,
     createdBy: row.created_by,
     verified: !!row.creator?.verified
   };
@@ -2218,6 +2219,7 @@ function openDetail(id){
         ${canFollowPublisher(ev) ? `<button type="button" class="secondary-btn" id="followBtn" style="margin-left:auto;">${userFollowing.has(ev.createdBy) ? '<i class="ti ti-user-check"></i>Siguiendo' : '<i class="ti ti-user-plus"></i>Seguir'}</button>` : ''}
       </div>
       <div id="detailOrganizerSocials"></div>
+      ${ev.ticketUrl ? `<a class="primary-btn mint" id="ticketLinkBtn" href="${escapeHtml(ev.ticketUrl)}" target="_blank" rel="noopener" style="display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; margin-bottom:14px;"><i class="ti ti-ticket" aria-hidden="true"></i>Sacar entradas / anotarse</a>` : ''}
     </div>
     <div class="detail-actions">
       <div class="main-action-row">
@@ -2418,6 +2420,11 @@ function openForm(eventToEdit){
           <input id="fImg" type="url" placeholder="https://..." value="${escapeHtml(eventToEdit?.img || '')}">
         </div>
 
+        <div class="field">
+          <label for="fTicketUrl">Link para sacar entradas o anotarse <em>opcional</em></label>
+          <input id="fTicketUrl" type="url" placeholder="https://..." value="${escapeHtml(eventToEdit?.ticketUrl || '')}">
+        </div>
+
         <div class="form-submit-row">
           <button type="submit" class="submit-btn">${eventToEdit ? 'Guardar cambios' : 'Publicar plan en el radar'}</button>
         </div>
@@ -2513,6 +2520,7 @@ async function handleFormSubmit(event){
     organizer:document.getElementById('fOrganizer').value.trim(),
     description:document.getElementById('fDesc').value.trim(),
     img:validateImageUrl(document.getElementById('fImg').value.trim()) || FALLBACK_IMG,
+    ticket_url:normalizeWebsite(document.getElementById('fTicketUrl').value.trim()),
     lat:pos.lat,
     lng:pos.lng
   };
