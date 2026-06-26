@@ -2930,6 +2930,9 @@ async function renderAdminSheet(){
       <h3 class="form-title" style="font-size:16px;">Eventos publicados</h3>
       <div id="adminEventsList" class="my-plans-section">Cargando...</div>
       <h3 class="form-title" style="font-size:16px; margin-top:18px;">Usuarios</h3>
+      <div class="field" style="margin-bottom:10px;">
+        <input type="search" id="adminUserSearch" autocomplete="off" placeholder="Buscar por nombre o usuario...">
+      </div>
       <div id="adminUsersList" class="pref-list">Cargando...</div>
     </div>
   `;
@@ -2962,6 +2965,7 @@ async function renderAdminSheet(){
   });
 
   const usersList = document.getElementById('adminUsersList');
+  const userSearch = document.getElementById('adminUserSearch');
   const { data: profilesData, error } = await supabaseClient
     .from('profiles')
     .select('id, display_name, username, role, verified')
@@ -2970,26 +2974,45 @@ async function renderAdminSheet(){
     usersList.innerHTML = '<div class="my-plans-empty">No se pudieron cargar los usuarios.</div>';
     return;
   }
-  usersList.innerHTML = profilesData.map(p => `
-    <div class="pref-item" data-user="${p.id}" style="align-items:center;">
-      <span style="flex:1; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(p.display_name || (p.username ? '@' + p.username : p.id))}</span>
-      <select data-role-select="${p.id}">
-        <option value="user" ${p.role === 'user' ? 'selected' : ''}>Usuario</option>
-        <option value="organizer" ${p.role === 'organizer' ? 'selected' : ''}>Organizador</option>
-        <option value="admin" ${p.role === 'admin' ? 'selected' : ''}>Admin</option>
-      </select>
-      <label style="display:flex; align-items:center; gap:4px; font-size:12px;">
-        Verificado
-        <input type="checkbox" data-verified-toggle="${p.id}" ${p.verified ? 'checked' : ''}>
-      </label>
-    </div>
-  `).join('');
-  usersList.querySelectorAll('[data-role-select]').forEach(select => {
-    select.addEventListener('change', () => updateUserRole(select.dataset.roleSelect, { role: select.value }));
-  });
-  usersList.querySelectorAll('[data-verified-toggle]').forEach(checkbox => {
-    checkbox.addEventListener('change', () => updateUserRole(checkbox.dataset.verifiedToggle, { verified: checkbox.checked }));
-  });
+
+  function renderUsers(list){
+    if(!list.length){
+      usersList.innerHTML = `<div class="my-plans-empty">${userSearch.value.trim() ? 'No encontramos usuarios con esa búsqueda.' : 'Buscá un usuario por nombre o nombre de usuario.'}</div>`;
+      return;
+    }
+    usersList.innerHTML = list.map(p => `
+      <div class="pref-item" data-user="${p.id}" style="align-items:center;">
+        <span style="flex:1; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(p.display_name || (p.username ? '@' + p.username : p.id))}</span>
+        <select data-role-select="${p.id}">
+          <option value="user" ${p.role === 'user' ? 'selected' : ''}>Usuario</option>
+          <option value="organizer" ${p.role === 'organizer' ? 'selected' : ''}>Organizador</option>
+          <option value="admin" ${p.role === 'admin' ? 'selected' : ''}>Admin</option>
+        </select>
+        <label style="display:flex; align-items:center; gap:4px; font-size:12px;">
+          Verificado
+          <input type="checkbox" data-verified-toggle="${p.id}" ${p.verified ? 'checked' : ''}>
+        </label>
+      </div>
+    `).join('');
+    usersList.querySelectorAll('[data-role-select]').forEach(select => {
+      select.addEventListener('change', () => updateUserRole(select.dataset.roleSelect, { role: select.value }));
+    });
+    usersList.querySelectorAll('[data-verified-toggle]').forEach(checkbox => {
+      checkbox.addEventListener('change', () => updateUserRole(checkbox.dataset.verifiedToggle, { verified: checkbox.checked }));
+    });
+  }
+
+  function filterUsers(){
+    const q = normalizeText(userSearch.value);
+    if(!q){
+      renderUsers([]);
+      return;
+    }
+    renderUsers(profilesData.filter(p => normalizeText(`${p.display_name || ''} ${p.username || ''}`).includes(q)));
+  }
+
+  userSearch.addEventListener('input', filterUsers);
+  renderUsers([]);
 }
 
 async function deleteEventAsAdmin(id){
