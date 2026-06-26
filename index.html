@@ -2204,6 +2204,7 @@ function openDetail(id){
         <span><small>Organiza</small><strong>${escapeHtml(ev.organizer || 'Sin dato')}${ev.verified ? ' <i class="ti ti-rosette-discount-check verified-badge" title="Organizador verificado"></i>' : ''}</strong></span>
         ${canFollowPublisher(ev) ? `<button type="button" class="secondary-btn" id="followBtn" style="margin-left:auto;">${userFollowing.has(ev.createdBy) ? '<i class="ti ti-user-check"></i>Siguiendo' : '<i class="ti ti-user-plus"></i>Seguir'}</button>` : ''}
       </div>
+      <div id="detailOrganizerSocials"></div>
     </div>
     <div class="detail-actions">
       <div class="main-action-row">
@@ -2236,6 +2237,12 @@ function openDetail(id){
     closeSheet(els.detailOverlay);
     openOrganizerSheet(ev.createdBy);
   });
+  if(ev.createdBy){
+    supabaseClient.from('profiles').select('instagram, twitter, website').eq('id', ev.createdBy).maybeSingle().then(({ data }) => {
+      const el = document.getElementById('detailOrganizerSocials');
+      if(el) el.innerHTML = socialLinksHtml(data);
+    });
+  }
   renderMap(getFilteredEvents());
 }
 
@@ -2588,18 +2595,32 @@ async function fetchCurrentUserProfile(){
   if(!currentUser){ currentUserProfile = null; return; }
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('role, verified, display_name, avatar_url, username, first_name, last_name, bio')
+    .select('role, verified, display_name, avatar_url, username, first_name, last_name, bio, instagram, twitter, website')
     .eq('id', currentUser.id)
     .maybeSingle();
-  currentUserProfile = error || !data ? { role:'user', verified:false, display_name:currentUser.email, avatar_url:null, username:null, first_name:null, last_name:null, bio:null } : data;
+  currentUserProfile = error || !data ? { role:'user', verified:false, display_name:currentUser.email, avatar_url:null, username:null, first_name:null, last_name:null, bio:null, instagram:null, twitter:null, website:null } : data;
 }
 
-async function updateProfile(firstName, lastName, username, bio){
+function normalizeSocialHandle(value){
+  value = (value || '').trim();
+  return value.replace(/^@/, '') || null;
+}
+
+function normalizeWebsite(value){
+  value = (value || '').trim();
+  if(!value) return null;
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+async function updateProfile(firstName, lastName, username, bio, instagram, twitter, website){
   if(!currentUser) return { error: 'Completá nombre, apellido y nombre de usuario.' };
   firstName = firstName.trim();
   lastName = lastName.trim();
   username = username.trim();
   bio = (bio || '').trim();
+  instagram = normalizeSocialHandle(instagram);
+  twitter = normalizeSocialHandle(twitter);
+  website = normalizeWebsite(website);
   if(!firstName || !lastName || !username) return { error: 'Completá nombre, apellido y nombre de usuario.' };
   if(!/^[a-zA-Z0-9_]+$/.test(username)) return { error: 'El nombre de usuario solo puede tener letras, números y guion bajo.' };
   const { error } = await supabaseClient.from('profiles').update({
@@ -2607,6 +2628,9 @@ async function updateProfile(firstName, lastName, username, bio){
     last_name: lastName,
     username,
     bio: bio || null,
+    instagram,
+    twitter,
+    website,
     display_name: `${firstName} ${lastName}`.trim()
   }).eq('id', currentUser.id);
   if(error){
@@ -2616,6 +2640,9 @@ async function updateProfile(firstName, lastName, username, bio){
   currentUserProfile.last_name = lastName;
   currentUserProfile.username = username;
   currentUserProfile.bio = bio || null;
+  currentUserProfile.instagram = instagram;
+  currentUserProfile.twitter = twitter;
+  currentUserProfile.website = website;
   currentUserProfile.display_name = `${firstName} ${lastName}`.trim();
   return { error: null };
 }
@@ -2840,6 +2867,18 @@ async function renderAccountSheet(){
                 <label for="editBio">Descripción</label>
                 <textarea id="editBio" maxlength="280" rows="3" placeholder="Contales a los demás quién sos">${escapeHtml(currentUserProfile?.bio || '')}</textarea>
               </div>
+              <div class="field" style="margin-bottom:6px;">
+                <label for="editInstagram">Instagram</label>
+                <input type="text" id="editInstagram" maxlength="60" placeholder="usuario (sin @)" value="${escapeHtml(currentUserProfile?.instagram || '')}">
+              </div>
+              <div class="field" style="margin-bottom:6px;">
+                <label for="editTwitter">X / Twitter</label>
+                <input type="text" id="editTwitter" maxlength="60" placeholder="usuario (sin @)" value="${escapeHtml(currentUserProfile?.twitter || '')}">
+              </div>
+              <div class="field" style="margin-bottom:6px;">
+                <label for="editWebsite">Sitio web</label>
+                <input type="text" id="editWebsite" maxlength="200" placeholder="www.tusitio.com" value="${escapeHtml(currentUserProfile?.website || '')}">
+              </div>
               <p class="form-note" id="editProfileStatus"></p>
               <div style="display:flex; gap:8px;">
                 <button type="button" class="primary-btn" id="saveProfileBtn" style="flex:1;">Guardar</button>
@@ -2942,8 +2981,11 @@ async function renderAccountSheet(){
       const lastName = document.getElementById('editLastName').value;
       const username = document.getElementById('editUsername').value;
       const bio = document.getElementById('editBio').value;
+      const instagram = document.getElementById('editInstagram').value;
+      const twitter = document.getElementById('editTwitter').value;
+      const website = document.getElementById('editWebsite').value;
       status.textContent = 'Guardando...';
-      const { error } = await updateProfile(firstName, lastName, username, bio);
+      const { error } = await updateProfile(firstName, lastName, username, bio, instagram, twitter, website);
       if(error){
         status.textContent = error;
         return;
@@ -3234,6 +3276,16 @@ async function renderMyEventsSheet(){
   });
 }
 
+function socialLinksHtml(profile){
+  if(!profile) return '';
+  const links = [];
+  if(profile.instagram) links.push(`<a class="secondary-btn" href="https://instagram.com/${encodeURIComponent(profile.instagram)}" target="_blank" rel="noopener"><i class="ti ti-brand-instagram"></i>Instagram</a>`);
+  if(profile.twitter) links.push(`<a class="secondary-btn" href="https://x.com/${encodeURIComponent(profile.twitter)}" target="_blank" rel="noopener"><i class="ti ti-brand-x"></i>X</a>`);
+  if(profile.website) links.push(`<a class="secondary-btn" href="${escapeHtml(profile.website)}" target="_blank" rel="noopener"><i class="ti ti-world"></i>Sitio web</a>`);
+  if(!links.length) return '';
+  return `<div class="social-links-row" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">${links.join('')}</div>`;
+}
+
 function openOrganizerSheet(organizerId){
   renderOrganizerSheet(organizerId);
   openSheet(els.organizerOverlay);
@@ -3252,6 +3304,7 @@ async function renderOrganizerSheet(organizerId){
       <div id="organizerHeader" style="display:flex; align-items:center; gap:12px; margin-bottom:10px;"></div>
       <h2 class="form-title" id="organizerTitle">Organizador</h2>
       <p id="organizerBio" class="form-note" style="margin-bottom:10px;"></p>
+      <div id="organizerSocials"></div>
       <div id="organizerEventsList" class="my-plans-section cards">Cargando...</div>
     </div>
   `;
@@ -3259,7 +3312,7 @@ async function renderOrganizerSheet(organizerId){
 
   const { data: profile } = await supabaseClient
     .from('profiles')
-    .select('id, display_name, username, verified, avatar_url, bio')
+    .select('id, display_name, username, verified, avatar_url, bio, instagram, twitter, website')
     .eq('id', organizerId)
     .maybeSingle();
 
@@ -3275,6 +3328,7 @@ async function renderOrganizerSheet(organizerId){
 
   document.getElementById('organizerBio').textContent = profile?.bio || '';
   document.getElementById('organizerBio').style.fontSize = '15px';
+  document.getElementById('organizerSocials').innerHTML = socialLinksHtml(profile);
 
   if(currentUser && currentUser.id !== organizerId){
     const followBtn = document.createElement('button');
