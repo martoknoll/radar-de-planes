@@ -1359,6 +1359,10 @@
     <article class="sheet" id="adminSheet" role="dialog" aria-modal="true" aria-labelledby="adminTitle"></article>
   </div>
 
+  <div class="sheet-overlay" id="myEventsOverlay" aria-hidden="true">
+    <article class="sheet" id="myEventsSheet" role="dialog" aria-modal="true" aria-labelledby="myEventsTitle"></article>
+  </div>
+
   <div class="sheet-overlay" id="locationOverlay" aria-hidden="true">
     <article class="sheet" id="locationSheet" role="dialog" aria-modal="true" aria-labelledby="locationModalTitle">
       <div class="sheet-handle" aria-hidden="true"></div>
@@ -2765,6 +2769,7 @@ async function renderAccountSheet(){
           </summary>
           <div class="pref-list">${prefItems}</div>
         </details>
+        ${hasRole('organizer','admin') ? '<button type="button" class="secondary-btn" id="myEventsBtn" style="width:100%; margin-bottom:10px;"><i class="ti ti-calendar-event"></i>Mis eventos creados</button>' : ''}
         ${hasRole('admin') ? '<button type="button" class="secondary-btn" id="adminPanelBtn" style="width:100%; margin-bottom:10px;"><i class="ti ti-shield-lock"></i>Panel de administración</button>' : ''}
         <button type="button" class="secondary-btn" id="logoutBtn" style="width:100%;"><i class="ti ti-logout"></i>Cerrar sesión</button>
       </div>
@@ -2790,6 +2795,10 @@ async function renderAccountSheet(){
     document.getElementById('adminPanelBtn')?.addEventListener('click', () => {
       closeAccountSheet();
       openAdminSheet();
+    });
+    document.getElementById('myEventsBtn')?.addEventListener('click', () => {
+      closeAccountSheet();
+      openMyEventsSheet();
     });
     document.getElementById('avatarEditBtn').addEventListener('click', () => {
       document.getElementById('avatarInput').click();
@@ -3037,6 +3046,55 @@ async function updateUserRole(userId, patch){
   showToast('Usuario actualizado');
 }
 
+/* ---------- Mis eventos creados ---------- */
+
+function openMyEventsSheet(){
+  renderMyEventsSheet();
+  openSheet(els.myEventsOverlay);
+}
+
+function closeMyEventsSheet(){
+  closeSheet(els.myEventsOverlay);
+}
+
+async function renderMyEventsSheet(){
+  const sheet = els.myEventsSheet;
+  sheet.innerHTML = `
+    <button type="button" class="sheet-close" id="closeMyEventsBtn" aria-label="Cerrar"><i class="ti ti-x" aria-hidden="true"></i></button>
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="form-content">
+      <h2 class="form-title" id="myEventsTitle">Mis eventos creados</h2>
+      <div id="myEventsList" class="my-plans-section">Cargando...</div>
+    </div>
+  `;
+  document.getElementById('closeMyEventsBtn').onclick = closeMyEventsSheet;
+
+  const list = document.getElementById('myEventsList');
+  if(!currentUser){
+    list.innerHTML = '<div class="my-plans-empty">Iniciá sesión para ver tus eventos.</div>';
+    return;
+  }
+  const myEvents = state.events
+    .filter(ev => ev.createdBy === currentUser.id)
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  list.innerHTML = myEvents.length
+    ? myEvents.map(ev => `
+      <div class="my-plan-item" data-open-my-event="${ev.id}">
+        <div class="my-plan-info">
+          <div class="my-plan-title">${escapeHtml(ev.title)}</div>
+          <div class="my-plan-meta">${fmtDate(ev.date)} · ${escapeHtml(catInfo(ev.category).label)}</div>
+        </div>
+      </div>
+    `).join('')
+    : '<div class="my-plans-empty">Todavía no creaste ningún evento.</div>';
+  list.querySelectorAll('[data-open-my-event]').forEach(item => {
+    item.addEventListener('click', () => {
+      closeMyEventsSheet();
+      openDetail(item.dataset.openMyEvent);
+    });
+  });
+}
+
 /* ---------- Bindings / init ---------- */
 
 function bindEvents(){
@@ -3154,7 +3212,7 @@ function bindEvents(){
   });
   els.skipLocationBtn.addEventListener('click', closeLocationModal);
 
-  [els.detailOverlay, els.formOverlay, els.accountOverlay, els.adminOverlay, els.locationOverlay].forEach(overlay => {
+  [els.detailOverlay, els.formOverlay, els.accountOverlay, els.adminOverlay, els.myEventsOverlay, els.locationOverlay].forEach(overlay => {
     overlay.addEventListener('click', event => {
       if(event.target === overlay) closeSheet(overlay);
     });
@@ -3165,6 +3223,7 @@ function bindEvents(){
       if(els.detailOverlay.classList.contains('open')) closeSheet(els.detailOverlay);
       if(els.formOverlay.classList.contains('open')) closeSheet(els.formOverlay);
       if(els.adminOverlay.classList.contains('open')) closeSheet(els.adminOverlay);
+      if(els.myEventsOverlay.classList.contains('open')) closeSheet(els.myEventsOverlay);
       if(els.accountOverlay.classList.contains('open')) closeSheet(els.accountOverlay);
     }
   });
@@ -3223,6 +3282,8 @@ function cacheElements(){
   els.accountSheet = document.getElementById('accountSheet');
   els.adminOverlay = document.getElementById('adminOverlay');
   els.adminSheet = document.getElementById('adminSheet');
+  els.myEventsOverlay = document.getElementById('myEventsOverlay');
+  els.myEventsSheet = document.getElementById('myEventsSheet');
   els.locationOverlay = document.getElementById('locationOverlay');
   els.activateLocationBtn = document.getElementById('activateLocationBtn');
   els.skipLocationBtn = document.getElementById('skipLocationBtn');
