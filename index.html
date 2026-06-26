@@ -2787,14 +2787,22 @@ async function renderAccountSheet(){
     if(userFollowing.size){
       const { data: followedProfiles } = await supabaseClient
         .from('profiles')
-        .select('id, display_name, username')
+        .select('id, display_name, username, avatar_url')
         .in('id', [...userFollowing]);
-      followingHtml = (followedProfiles || []).map(p => `
+      followingHtml = (followedProfiles || []).map(p => {
+        const name = p.display_name || (p.username ? '@' + p.username : p.id);
+        const initials = escapeHtml(String(name).slice(0,2).toUpperCase());
+        return `
         <div class="my-plan-item" data-open-organizer="${p.id}" style="cursor:pointer;">
-          <div class="my-plan-info"><div class="my-plan-title">${escapeHtml(p.display_name || (p.username ? '@' + p.username : p.id))}</div></div>
-          <button type="button" class="secondary-btn" data-unfollow-btn="${p.id}"><i class="ti ti-user-minus"></i></button>
+          <div class="my-plan-info" style="display:flex; align-items:center; gap:10px;">
+            ${p.avatar_url
+              ? `<img src="${escapeHtml(p.avatar_url)}" alt="" style="width:36px; height:36px; border-radius:50%; object-fit:cover; flex:none;">`
+              : `<div style="width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex:none;">${initials}</div>`}
+            <div class="my-plan-title">${escapeHtml(name)}</div>
+          </div>
+          <button type="button" class="secondary-btn admin-event-btn" data-unfollow-btn="${p.id}">Dejar de seguir</button>
         </div>
-      `).join('');
+      `;}).join('');
     }
 
     const displayName = currentUserProfile?.first_name || currentUserProfile?.display_name || 'che';
