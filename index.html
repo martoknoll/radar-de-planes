@@ -2220,6 +2220,7 @@ function handleAddEventClick(){
 
 let editingEventId = null;
 let reopenAdminAfterForm = false;
+let editingProfile = false;
 
 function openForm(eventToEdit){
   editingEventId = eventToEdit ? eventToEdit.id : null;
@@ -2484,10 +2485,27 @@ async function fetchCurrentUserProfile(){
   currentUserProfile = error || !data ? { role:'user', verified:false, display_name:currentUser.email, avatar_url:null, username:null, first_name:null, last_name:null } : data;
 }
 
-async function updateDisplayName(name){
-  if(!currentUser || !name.trim()) return;
-  await supabaseClient.from('profiles').update({ display_name: name.trim() }).eq('id', currentUser.id);
-  currentUserProfile.display_name = name.trim();
+async function updateProfile(firstName, lastName, username){
+  if(!currentUser) return { error: 'Completá nombre, apellido y nombre de usuario.' };
+  firstName = firstName.trim();
+  lastName = lastName.trim();
+  username = username.trim();
+  if(!firstName || !lastName || !username) return { error: 'Completá nombre, apellido y nombre de usuario.' };
+  if(!/^[a-zA-Z0-9_]+$/.test(username)) return { error: 'El nombre de usuario solo puede tener letras, números y guion bajo.' };
+  const { error } = await supabaseClient.from('profiles').update({
+    first_name: firstName,
+    last_name: lastName,
+    username,
+    display_name: `${firstName} ${lastName}`.trim()
+  }).eq('id', currentUser.id);
+  if(error){
+    return { error: error.message.includes('profiles_username_unique') ? 'Ese nombre de usuario ya está en uso.' : 'No se pudo guardar. Probá de nuevo.' };
+  }
+  currentUserProfile.first_name = firstName;
+  currentUserProfile.last_name = lastName;
+  currentUserProfile.username = username;
+  currentUserProfile.display_name = `${firstName} ${lastName}`.trim();
+  return { error: null };
 }
 
 async function uploadAvatar(file){
@@ -2536,6 +2554,7 @@ function openAccountSheet(){
 }
 
 function closeAccountSheet(){
+  editingProfile = false;
   closeSheet(els.accountOverlay);
 }
 
@@ -2690,11 +2709,27 @@ async function renderAccountSheet(){
             <input type="file" id="avatarInput" accept="image/*" hidden>
           </div>
           <div style="min-width:0; flex:1;">
-            <div class="account-name-row">
-              <h2 class="account-name" id="accountTitle">Bienvenido, ${escapeHtml(displayName)}</h2>
-              <button type="button" class="account-name-edit-btn" id="editNameBtn" aria-label="Editar nombre"><i class="ti ti-pencil"></i></button>
-            </div>
-            <div class="account-email">${username ? '@' + escapeHtml(username) : ''}</div>
+            ${editingProfile ? `
+              <div class="field-row" style="margin-bottom:6px;">
+                <div class="field"><label for="editFirstName">Nombre</label><input type="text" id="editFirstName" maxlength="40" value="${escapeHtml(currentUserProfile?.first_name || '')}"></div>
+                <div class="field"><label for="editLastName">Apellido</label><input type="text" id="editLastName" maxlength="40" value="${escapeHtml(currentUserProfile?.last_name || '')}"></div>
+              </div>
+              <div class="field" style="margin-bottom:6px;">
+                <label for="editUsername">Nombre de usuario</label>
+                <input type="text" id="editUsername" maxlength="24" pattern="[a-zA-Z0-9_]+" value="${escapeHtml(currentUserProfile?.username || '')}">
+              </div>
+              <p class="form-note" id="editProfileStatus"></p>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="primary-btn" id="saveProfileBtn" style="flex:1;">Guardar</button>
+                <button type="button" class="secondary-btn" id="cancelProfileBtn" style="flex:1;">Cancelar</button>
+              </div>
+            ` : `
+              <div class="account-name-row">
+                <h2 class="account-name" id="accountTitle">Bienvenido, ${escapeHtml(displayName)}</h2>
+                <button type="button" class="account-name-edit-btn" id="editNameBtn" aria-label="Editar perfil"><i class="ti ti-pencil"></i></button>
+              </div>
+              <div class="account-email">${username ? '@' + escapeHtml(username) : ''}</div>
+            `}
           </div>
         </div>
 
@@ -2748,9 +2783,28 @@ async function renderAccountSheet(){
     document.getElementById('avatarInput').addEventListener('change', (e) => {
       uploadAvatar(e.target.files[0]);
     });
-    document.getElementById('editNameBtn').addEventListener('click', () => {
-      const newName = window.prompt('¿Cómo querés que te llamemos?', displayName);
-      if(newName && newName.trim()) updateDisplayName(newName).then(renderAccountSheet);
+    document.getElementById('editNameBtn')?.addEventListener('click', () => {
+      editingProfile = true;
+      renderAccountSheet();
+    });
+    document.getElementById('cancelProfileBtn')?.addEventListener('click', () => {
+      editingProfile = false;
+      renderAccountSheet();
+    });
+    document.getElementById('saveProfileBtn')?.addEventListener('click', async () => {
+      const status = document.getElementById('editProfileStatus');
+      const firstName = document.getElementById('editFirstName').value;
+      const lastName = document.getElementById('editLastName').value;
+      const username = document.getElementById('editUsername').value;
+      status.textContent = 'Guardando...';
+      const { error } = await updateProfile(firstName, lastName, username);
+      if(error){
+        status.textContent = error;
+        return;
+      }
+      editingProfile = false;
+      renderAccountSheet();
+      showToast('Perfil actualizado');
     });
   }
 
