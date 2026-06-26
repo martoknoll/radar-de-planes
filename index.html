@@ -2218,6 +2218,10 @@ function closeSheet(overlay){
     reopenAdminAfterForm = false;
     openAdminSheet();
   }
+  if(overlay === els.formOverlay && reopenMyEventsAfterForm){
+    reopenMyEventsAfterForm = false;
+    openMyEventsSheet();
+  }
   if(overlay === els.detailOverlay && new URL(window.location.href).searchParams.has('evento')){
     const url = new URL(window.location.href);
     url.searchParams.delete('evento');
@@ -2240,6 +2244,7 @@ function handleAddEventClick(){
 
 let editingEventId = null;
 let reopenAdminAfterForm = false;
+let reopenMyEventsAfterForm = false;
 let editingProfile = false;
 
 function openForm(eventToEdit){
@@ -3084,6 +3089,7 @@ async function renderMyEventsSheet(){
           <div class="my-plan-title">${escapeHtml(ev.title)}</div>
           <div class="my-plan-meta">${fmtDate(ev.date)} · ${escapeHtml(catInfo(ev.category).label)}</div>
         </div>
+        ${daysUntil(ev.date) >= 0 ? `<button type="button" class="secondary-btn admin-event-btn" data-edit-my-event="${ev.id}"><i class="ti ti-edit"></i>Editar</button>` : ''}
       </div>
     `).join('')
     : '<div class="my-plans-empty">Todavía no creaste ningún evento.</div>';
@@ -3091,6 +3097,16 @@ async function renderMyEventsSheet(){
     item.addEventListener('click', () => {
       closeMyEventsSheet();
       openDetail(item.dataset.openMyEvent);
+    });
+  });
+  list.querySelectorAll('[data-edit-my-event]').forEach(btn => {
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const ev = myEvents.find(e => e.id === btn.dataset.editMyEvent);
+      if(!ev) return;
+      reopenMyEventsAfterForm = true;
+      closeMyEventsSheet();
+      openForm(ev);
     });
   });
 }
