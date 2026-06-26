@@ -937,6 +937,19 @@
       color:var(--text);
       border:1px solid var(--border);
     }
+    .social-icon-btn{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:40px;
+      height:40px;
+      border-radius:50%;
+      background:rgba(247,241,232,.07);
+      color:var(--text);
+      border:1px solid var(--border);
+      flex:none;
+    }
+    .social-icon-btn:active{transform:scale(.95);}
     .ghost-btn{
       background:transparent;
       color:var(--muted);
@@ -3276,14 +3289,20 @@ async function renderMyEventsSheet(){
   });
 }
 
+const SOCIAL_ICON_SVG = {
+  instagram: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>',
+  x: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 3h4.2l4.1 5.6L16 3h4.5l-6.5 8.1L21 21h-4.2l-4.5-6.1L7 21H2.5l6.9-8.6L3 3z"/></svg>',
+  world: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 4 5.7 4 9s-1.5 6.5-4 9c-2.5-2.5-4-5.7-4-9s1.5-6.5 4-9z"/></svg>'
+};
+
 function socialLinksHtml(profile){
   if(!profile) return '';
   const links = [];
-  if(profile.instagram) links.push(`<a class="secondary-btn" href="https://instagram.com/${encodeURIComponent(profile.instagram)}" target="_blank" rel="noopener"><i class="ti ti-brand-instagram"></i>Instagram</a>`);
-  if(profile.twitter) links.push(`<a class="secondary-btn" href="https://x.com/${encodeURIComponent(profile.twitter)}" target="_blank" rel="noopener"><i class="ti ti-brand-x"></i>X</a>`);
-  if(profile.website) links.push(`<a class="secondary-btn" href="${escapeHtml(profile.website)}" target="_blank" rel="noopener"><i class="ti ti-world"></i>Sitio web</a>`);
+  if(profile.instagram) links.push(`<a class="social-icon-btn" href="https://instagram.com/${encodeURIComponent(profile.instagram)}" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">${SOCIAL_ICON_SVG.instagram}</a>`);
+  if(profile.twitter) links.push(`<a class="social-icon-btn" href="https://x.com/${encodeURIComponent(profile.twitter)}" target="_blank" rel="noopener" aria-label="X (Twitter)" title="X (Twitter)">${SOCIAL_ICON_SVG.x}</a>`);
+  if(profile.website) links.push(`<a class="social-icon-btn" href="${escapeHtml(profile.website)}" target="_blank" rel="noopener" aria-label="Sitio web" title="Sitio web">${SOCIAL_ICON_SVG.world}</a>`);
   if(!links.length) return '';
-  return `<div class="social-links-row" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">${links.join('')}</div>`;
+  return `<div class="social-links-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">${links.join('')}</div>`;
 }
 
 function openOrganizerSheet(organizerId){
