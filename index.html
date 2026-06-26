@@ -1071,7 +1071,7 @@
     }
     .account-name-row{display:flex; align-items:center; gap:8px; min-width:0;}
     .account-name{font-size:19px; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-    .account-name-edit-btn{flex:none; background:none; border:none; color:var(--muted); font-size:15px; cursor:pointer; padding:4px;}
+    .account-name-edit-btn{flex:none; background:rgba(255,255,255,.08); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; cursor:pointer; padding:5px 9px; display:flex; align-items:center; gap:4px;}
     .account-email{font-size:12px; color:var(--muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
     .pref-dropdown{
       border:1px solid var(--border);
@@ -2726,7 +2726,7 @@ async function renderAccountSheet(){
             ` : `
               <div class="account-name-row">
                 <h2 class="account-name" id="accountTitle">Bienvenido, ${escapeHtml(displayName)}</h2>
-                <button type="button" class="account-name-edit-btn" id="editNameBtn" aria-label="Editar perfil"><i class="ti ti-pencil"></i></button>
+                <button type="button" class="account-name-edit-btn" id="editNameBtn" aria-label="Editar perfil"><i class="ti ti-pencil"></i>Editar</button>
               </div>
               <div class="account-email">${username ? '@' + escapeHtml(username) : ''}</div>
             `}
