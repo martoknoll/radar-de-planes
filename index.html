@@ -1107,7 +1107,7 @@
     .my-plans-section{margin-bottom:18px;}
     .my-plans-empty{font-size:13px; color:var(--muted); padding:11px 13px; background:rgba(247,241,232,.06); border:1px solid var(--border); border-radius:14px;}
     .my-plan-item{
-      display:flex; align-items:center; gap:10px;
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
       background:rgba(247,241,232,.06);
       border:1px solid var(--border);
       border-radius:14px;
@@ -1115,6 +1115,7 @@
       cursor:pointer;
       margin-bottom:8px;
     }
+    .admin-event-btn{flex:0 0 auto; min-height:34px; padding:0 12px; font-size:12px;}
     .my-plan-item:last-child{margin-bottom:0;}
     .my-plan-info{flex:1; min-width:0;}
     .my-plan-title{font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
@@ -2942,8 +2943,8 @@ async function renderAdminSheet(){
           <div class="my-plan-title">${escapeHtml(ev.title)}</div>
           <div class="my-plan-meta">${fmtDate(ev.date)} · ${escapeHtml(ev.organizer)}</div>
         </div>
-        <button type="button" class="secondary-btn" data-edit-event="${ev.id}"><i class="ti ti-edit"></i></button>
-        <button type="button" class="secondary-btn" data-delete-event="${ev.id}"><i class="ti ti-trash"></i></button>
+        <button type="button" class="secondary-btn admin-event-btn" data-edit-event="${ev.id}"><i class="ti ti-edit"></i>Editar</button>
+        <button type="button" class="secondary-btn admin-event-btn" data-delete-event="${ev.id}"><i class="ti ti-trash"></i>Borrar</button>
       </div>
     `).join('')
     : '<div class="my-plans-empty">No hay eventos publicados.</div>';
