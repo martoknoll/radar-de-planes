@@ -1373,6 +1373,10 @@
     <article class="sheet" id="myEventsSheet" role="dialog" aria-modal="true" aria-labelledby="myEventsTitle"></article>
   </div>
 
+  <div class="sheet-overlay" id="organizerOverlay" aria-hidden="true">
+    <article class="sheet" id="organizerSheet" role="dialog" aria-modal="true" aria-labelledby="organizerTitle"></article>
+  </div>
+
   <div class="sheet-overlay" id="locationOverlay" aria-hidden="true">
     <article class="sheet" id="locationSheet" role="dialog" aria-modal="true" aria-labelledby="locationModalTitle">
       <div class="sheet-handle" aria-hidden="true"></div>
@@ -2195,7 +2199,7 @@ function openDetail(id){
         <div class="info-box"><span class="label">Distancia</span><span class="value">${fmtDist(dist)}</span></div>
       </div>
       <p class="detail-desc">${escapeHtml(ev.desc)}</p>
-      <div class="organizer-box">
+      <div class="organizer-box" ${ev.createdBy ? `data-open-organizer="${ev.createdBy}" style="cursor:pointer;"` : ''}>
         <span class="avatar">${escapeHtml(String(ev.organizer || 'RP').slice(0,2).toUpperCase())}</span>
         <span><small>Organiza</small><strong>${escapeHtml(ev.organizer || 'Sin dato')}${ev.verified ? ' <i class="ti ti-rosette-discount-check verified-badge" title="Organizador verificado"></i>' : ''}</strong></span>
         ${canFollowPublisher(ev) ? `<button type="button" class="secondary-btn" id="followBtn" style="margin-left:auto;">${userFollowing.has(ev.createdBy) ? '<i class="ti ti-user-check"></i>Siguiendo' : '<i class="ti ti-user-plus"></i>Seguir'}</button>` : ''}
@@ -2224,7 +2228,14 @@ function openDetail(id){
   document.getElementById('routeBtn').addEventListener('click', () => openRoute(ev));
   document.getElementById('shareBtn').addEventListener('click', () => shareEvent(ev));
   document.getElementById('reportBtn').addEventListener('click', () => showToast('Gracias. Marcamos este plan para revisar.'));
-  document.getElementById('followBtn')?.addEventListener('click', () => toggleFollow(ev.createdBy).then(() => openDetail(id)));
+  document.getElementById('followBtn')?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    toggleFollow(ev.createdBy).then(() => openDetail(id));
+  });
+  document.querySelector('[data-open-organizer]')?.addEventListener('click', () => {
+    closeSheet(els.detailOverlay);
+    openOrganizerSheet(ev.createdBy);
+  });
   renderMap(getFilteredEvents());
 }
 
@@ -2779,7 +2790,7 @@ async function renderAccountSheet(){
         .select('id, display_name, username')
         .in('id', [...userFollowing]);
       followingHtml = (followedProfiles || []).map(p => `
-        <div class="my-plan-item" data-unfollow="${p.id}">
+        <div class="my-plan-item" data-open-organizer="${p.id}" style="cursor:pointer;">
           <div class="my-plan-info"><div class="my-plan-title">${escapeHtml(p.display_name || (p.username ? '@' + p.username : p.id))}</div></div>
           <button type="button" class="secondary-btn" data-unfollow-btn="${p.id}"><i class="ti ti-user-minus"></i></button>
         </div>
@@ -2869,14 +2880,15 @@ async function renderAccountSheet(){
         openDetail(card.dataset.cardId);
       });
     });
-    sheet.querySelectorAll('.my-plan-item').forEach(item => {
+    sheet.querySelectorAll('[data-open-organizer]').forEach(item => {
       item.addEventListener('click', () => {
         closeAccountSheet();
-        openDetail(item.dataset.id);
+        openOrganizerSheet(item.dataset.openOrganizer);
       });
     });
     sheet.querySelectorAll('[data-unfollow-btn]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (event) => {
+        event.stopPropagation();
         await toggleFollow(btn.dataset.unfollowBtn);
         renderAccountSheet();
       });
@@ -3206,6 +3218,66 @@ async function renderMyEventsSheet(){
   });
 }
 
+function openOrganizerSheet(organizerId){
+  renderOrganizerSheet(organizerId);
+  openSheet(els.organizerOverlay);
+}
+
+function closeOrganizerSheet(){
+  closeSheet(els.organizerOverlay);
+}
+
+async function renderOrganizerSheet(organizerId){
+  const sheet = els.organizerSheet;
+  sheet.innerHTML = `
+    <button type="button" class="sheet-close" id="closeOrganizerBtn" aria-label="Cerrar"><i class="ti ti-x" aria-hidden="true"></i></button>
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="form-content">
+      <h2 class="form-title" id="organizerTitle">Organizador</h2>
+      <div id="organizerEventsList" class="my-plans-section cards">Cargando...</div>
+    </div>
+  `;
+  document.getElementById('closeOrganizerBtn').onclick = closeOrganizerSheet;
+
+  const { data: profile } = await supabaseClient
+    .from('profiles')
+    .select('id, display_name, username, verified')
+    .eq('id', organizerId)
+    .maybeSingle();
+
+  const title = document.getElementById('organizerTitle');
+  title.innerHTML = `${escapeHtml(profile?.display_name || 'Organizador')}${profile?.verified ? ' <i class="ti ti-rosette-discount-check verified-badge" title="Organizador verificado"></i>' : ''}`;
+
+  if(currentUser && currentUser.id !== organizerId){
+    const followBtn = document.createElement('button');
+    followBtn.type = 'button';
+    followBtn.className = 'secondary-btn';
+    followBtn.id = 'organizerFollowBtn';
+    followBtn.style.marginBottom = '14px';
+    followBtn.innerHTML = userFollowing.has(organizerId) ? '<i class="ti ti-user-check"></i>Siguiendo' : '<i class="ti ti-user-plus"></i>Seguir';
+    followBtn.addEventListener('click', async () => {
+      await toggleFollow(organizerId);
+      followBtn.innerHTML = userFollowing.has(organizerId) ? '<i class="ti ti-user-check"></i>Siguiendo' : '<i class="ti ti-user-plus"></i>Seguir';
+    });
+    title.insertAdjacentElement('afterend', followBtn);
+  }
+
+  const list = document.getElementById('organizerEventsList');
+  const activeEvents = state.events
+    .filter(ev => ev.createdBy === organizerId && daysUntil(ev.date) >= 0)
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  list.innerHTML = activeEvents.length
+    ? activeEvents.map(ev => eventCardHtml(ev)).join('')
+    : '<div class="my-plans-empty">Este organizador no tiene eventos activos.</div>';
+  list.querySelectorAll('[data-card-id]').forEach(card => {
+    card.addEventListener('click', (event) => {
+      event.stopPropagation();
+      closeOrganizerSheet();
+      openDetail(card.dataset.cardId);
+    });
+  });
+}
+
 /* ---------- Bindings / init ---------- */
 
 function bindEvents(){
@@ -3323,7 +3395,7 @@ function bindEvents(){
   });
   els.skipLocationBtn.addEventListener('click', closeLocationModal);
 
-  [els.detailOverlay, els.formOverlay, els.accountOverlay, els.adminOverlay, els.myEventsOverlay, els.locationOverlay].forEach(overlay => {
+  [els.detailOverlay, els.formOverlay, els.accountOverlay, els.adminOverlay, els.myEventsOverlay, els.organizerOverlay, els.locationOverlay].forEach(overlay => {
     overlay.addEventListener('click', event => {
       if(event.target === overlay) closeSheet(overlay);
     });
@@ -3335,6 +3407,7 @@ function bindEvents(){
       if(els.formOverlay.classList.contains('open')) closeSheet(els.formOverlay);
       if(els.adminOverlay.classList.contains('open')) closeSheet(els.adminOverlay);
       if(els.myEventsOverlay.classList.contains('open')) closeSheet(els.myEventsOverlay);
+      if(els.organizerOverlay.classList.contains('open')) closeSheet(els.organizerOverlay);
       if(els.accountOverlay.classList.contains('open')) closeSheet(els.accountOverlay);
     }
   });
@@ -3396,6 +3469,8 @@ function cacheElements(){
   els.adminSheet = document.getElementById('adminSheet');
   els.myEventsOverlay = document.getElementById('myEventsOverlay');
   els.myEventsSheet = document.getElementById('myEventsSheet');
+  els.organizerOverlay = document.getElementById('organizerOverlay');
+  els.organizerSheet = document.getElementById('organizerSheet');
   els.locationOverlay = document.getElementById('locationOverlay');
   els.activateLocationBtn = document.getElementById('activateLocationBtn');
   els.skipLocationBtn = document.getElementById('skipLocationBtn');
