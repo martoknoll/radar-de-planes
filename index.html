@@ -3270,10 +3270,11 @@ async function renderOrganizerSheet(organizerId){
   const name = profile?.display_name || (profile?.username ? '@' + profile.username : 'Organizador');
   const initials = escapeHtml(String(name).slice(0,2).toUpperCase());
   header.innerHTML = profile?.avatar_url
-    ? `<img src="${escapeHtml(profile.avatar_url)}" alt="" style="width:56px; height:56px; border-radius:50%; object-fit:cover; flex:none;">`
-    : `<div style="width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; flex:none;">${initials}</div>`;
+    ? `<img src="${escapeHtml(profile.avatar_url)}" alt="" style="width:84px; height:84px; border-radius:50%; object-fit:cover; flex:none;">`
+    : `<div style="width:84px; height:84px; border-radius:50%; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:700; flex:none;">${initials}</div>`;
 
   document.getElementById('organizerBio').textContent = profile?.bio || '';
+  document.getElementById('organizerBio').style.fontSize = '15px';
 
   if(currentUser && currentUser.id !== organizerId){
     const followBtn = document.createElement('button');
