@@ -1277,6 +1277,9 @@
         <button type="button" class="chip alt" id="freeToggleBtn" aria-pressed="false">
           <i class="ti ti-ticket" aria-hidden="true"></i>Gratis
         </button>
+        <button type="button" class="chip alt" id="interestedToggleBtn" aria-pressed="false">
+          <i class="ti ti-star" aria-hidden="true"></i>Me interesa
+        </button>
         <div class="filters-search">
           <div class="search-box" id="searchBox">
             <button type="button" class="search-toggle-btn" id="searchToggleBtn" aria-label="Buscar planes" aria-expanded="false">
@@ -1520,6 +1523,7 @@ const state = {
   activeCategories:['todos'],
   dateFilter:'hoy',
   freeOnly:false,
+  interestedOnly:false,
   query:'',
   sortBy:'date',
   currentView:'mapa',
@@ -1749,6 +1753,8 @@ function buildFilters(){
   syncDropdown(els.sortDropdownMenu, els.sortDropdownLabel, els.sortSelect.value);
   els.freeToggleBtn.classList.toggle('active', state.freeOnly);
   els.freeToggleBtn.setAttribute('aria-pressed', state.freeOnly);
+  els.interestedToggleBtn.classList.toggle('active', state.interestedOnly);
+  els.interestedToggleBtn.setAttribute('aria-pressed', state.interestedOnly);
 }
 
 const dropdownClosers = [];
@@ -1794,6 +1800,11 @@ function getFilteredEvents(){
       return true;
     })
     .filter(ev => !state.freeOnly || isFree(ev.price))
+    .filter(ev => {
+      if(!state.interestedOnly) return true;
+      const i = getInteraction(ev.id);
+      return i.interested || i.going;
+    })
     .filter(ev => {
       if(!q) return true;
       const haystack = normalizeText([ev.title, ev.category, catInfo(ev.category).label, ev.address, ev.organizer, ev.desc, ev.price].join(' '));
@@ -1883,7 +1894,7 @@ function renderList(list){
   const activeCats = state.activeCategories;
   const catLabel = activeCats.includes('todos') ? '' :
     activeCats.length === 1 ? ` · ${catInfo(activeCats[0]).label}` : ` · ${activeCats.length} categorías`;
-  els.resultsTitle.textContent = `${titleByDate[state.dateFilter]}${state.freeOnly ? ' gratis' : ''}${catLabel}`;
+  els.resultsTitle.textContent = `${titleByDate[state.dateFilter]}${state.freeOnly ? ' gratis' : ''}${state.interestedOnly ? ' que te interesan' : ''}${catLabel}`;
 
   const subtitleParts = [];
   subtitleParts.push(`${list.length} resultado${list.length === 1 ? '' : 's'}`);
@@ -2010,6 +2021,7 @@ function resetFilters(){
   state.activeCategories = ['todos'];
   state.dateFilter = 'hoy';
   state.freeOnly = false;
+  state.interestedOnly = false;
   state.query = '';
   els.searchInput.value = '';
   els.clearSearchBtn.hidden = true;
@@ -2425,6 +2437,7 @@ async function handleFormSubmit(event){
   state.activeCategories = ['todos'];
   state.dateFilter = daysUntil(dateValue) === 0 ? 'hoy' : 'todos';
   state.freeOnly = false;
+  state.interestedOnly = false;
   closeSheet(els.formOverlay);
   render();
   selectOnMap(savedEvent.id);
@@ -3051,6 +3064,11 @@ function bindEvents(){
     render();
   });
 
+  els.interestedToggleBtn.addEventListener('click', () => {
+    state.interestedOnly = !state.interestedOnly;
+    render();
+  });
+
   els.mobileCategoryChips.addEventListener('click', event => {
     const chip = event.target.closest('[data-value]');
     if(!chip) return;
@@ -3157,6 +3175,7 @@ function cacheElements(){
   els.sortDropdownMenu = document.getElementById('sortDropdownMenu');
   els.sortDropdownLabel = document.getElementById('sortDropdownLabel');
   els.freeToggleBtn = document.getElementById('freeToggleBtn');
+  els.interestedToggleBtn = document.getElementById('interestedToggleBtn');
   els.workspace = document.getElementById('workspace');
   els.mapPane = document.getElementById('mapPane');
   els.listPane = document.getElementById('listPane');
