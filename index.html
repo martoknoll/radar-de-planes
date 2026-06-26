@@ -1690,6 +1690,57 @@ function setInteraction(id, next){
     state.interactions[id] = next;
   }
   saveLocalJson(STORAGE_KEYS.interactions, state.interactions);
+  syncInteractionToSupabase(id, next);
+}
+
+async function syncInteractionToSupabase(id, next){
+  if(!currentUser) return;
+  try{
+    if(!next.interested && !next.going){
+      await supabaseClient.from('interactions').delete().eq('user_id', currentUser.id).eq('event_id', id);
+    }else{
+      await supabaseClient.from('interactions').upsert({
+        user_id: currentUser.id,
+        event_id: id,
+        interested: !!next.interested,
+        going: !!next.going,
+        updated_at: new Date().toISOString()
+      });
+    }
+  }catch(err){
+    console.warn('No se pudo sincronizar la interacción', err);
+  }
+}
+
+async function fetchMyInteractions(){
+  if(!currentUser) return;
+  const { data, error } = await supabaseClient
+    .from('interactions')
+    .select('event_id, interested, going')
+    .eq('user_id', currentUser.id);
+  if(error || !data) return;
+  data.forEach(row => {
+    if(row.interested || row.going){
+      state.interactions[row.event_id] = {interested:!!row.interested, going:!!row.going};
+    }
+  });
+  saveLocalJson(STORAGE_KEYS.interactions, state.interactions);
+}
+
+async function fetchInteractionCounts(eventIds){
+  if(!eventIds.length) return {};
+  const { data, error } = await supabaseClient
+    .from('interactions')
+    .select('event_id, interested, going')
+    .in('event_id', eventIds);
+  if(error || !data) return {};
+  const counts = {};
+  data.forEach(row => {
+    const c = counts[row.event_id] || (counts[row.event_id] = {interested:0, going:0});
+    if(row.interested) c.interested++;
+    if(row.going) c.going++;
+  });
+  return counts;
 }
 
 function getMyPlans(){
@@ -3082,17 +3133,24 @@ async function renderMyEventsSheet(){
   const myEvents = state.events
     .filter(ev => ev.createdBy === currentUser.id)
     .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
-  list.innerHTML = myEvents.length
-    ? myEvents.map(ev => `
+  if(!myEvents.length){
+    list.innerHTML = '<div class="my-plans-empty">Todavía no creaste ningún evento.</div>';
+    return;
+  }
+  const counts = await fetchInteractionCounts(myEvents.map(ev => ev.id));
+  list.innerHTML = myEvents.map(ev => {
+    const c = counts[ev.id] || {interested:0, going:0};
+    return `
       <div class="my-plan-item" data-open-my-event="${ev.id}">
         <div class="my-plan-info">
           <div class="my-plan-title">${escapeHtml(ev.title)}</div>
           <div class="my-plan-meta">${fmtDate(ev.date)} · ${escapeHtml(catInfo(ev.category).label)}</div>
+          <div class="my-plan-meta"><i class="ti ti-star-filled" aria-hidden="true"></i> ${c.interested} interesados · <i class="ti ti-flag" aria-hidden="true"></i> ${c.going} van</div>
         </div>
         ${daysUntil(ev.date) >= 0 ? `<button type="button" class="secondary-btn admin-event-btn" data-edit-my-event="${ev.id}"><i class="ti ti-edit"></i>Editar</button>` : ''}
       </div>
-    `).join('')
-    : '<div class="my-plans-empty">Todavía no creaste ningún evento.</div>';
+    `;
+  }).join('');
   list.querySelectorAll('[data-open-my-event]').forEach(item => {
     item.addEventListener('click', () => {
       closeMyEventsSheet();
@@ -3330,6 +3388,8 @@ async function init(){
     await fetchCurrentUserProfile();
     await loadPreferences();
     await loadFollowing();
+    await fetchMyInteractions();
+    render();
   }
   updateAccountBtn();
   if(isPasswordRecoveryLink && currentUser){
@@ -3349,6 +3409,8 @@ async function init(){
       await fetchCurrentUserProfile();
       await loadPreferences();
       await loadFollowing();
+      await fetchMyInteractions();
+      render();
     }else{
       userPreferences = new Set();
       userFollowing = new Set();
