@@ -2276,7 +2276,7 @@ function openForm(eventToEdit){
 
         <div class="field">
           <label for="fOrganizer">Organizador</label>
-          <input id="fOrganizer" type="text" maxlength="60" placeholder="Nombre del espacio, club o productor" value="${escapeHtml(eventToEdit?.organizer ?? currentUser?.email ?? '')}" required>
+          <input id="fOrganizer" type="text" maxlength="60" placeholder="Nombre del espacio, club o productor" value="${escapeHtml(eventToEdit?.organizer ?? currentUserProfile?.display_name ?? '')}" required>
         </div>
 
         <div class="field">
@@ -2478,10 +2478,10 @@ async function fetchCurrentUserProfile(){
   if(!currentUser){ currentUserProfile = null; return; }
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('role, verified, display_name, avatar_url')
+    .select('role, verified, display_name, avatar_url, username, first_name, last_name')
     .eq('id', currentUser.id)
     .maybeSingle();
-  currentUserProfile = error || !data ? { role:'user', verified:false, display_name:currentUser.email, avatar_url:null } : data;
+  currentUserProfile = error || !data ? { role:'user', verified:false, display_name:currentUser.email, avatar_url:null, username:null, first_name:null, last_name:null } : data;
 }
 
 async function updateDisplayName(name){
@@ -2576,6 +2576,20 @@ async function renderAccountSheet(){
           <button type="button" data-mode="signup" aria-pressed="false">Crear cuenta</button>
         </div>
         <form id="authForm">
+          <div class="field-row" id="signupNameRow" style="display:none;">
+            <div class="field">
+              <label for="authFirstName">Nombre</label>
+              <input type="text" id="authFirstName" maxlength="40" placeholder="Tu nombre">
+            </div>
+            <div class="field">
+              <label for="authLastName">Apellido</label>
+              <input type="text" id="authLastName" maxlength="40" placeholder="Tu apellido">
+            </div>
+          </div>
+          <div class="field" id="signupUsernameField" style="display:none;">
+            <label for="authUsername">Nombre de usuario</label>
+            <input type="text" id="authUsername" maxlength="24" pattern="[a-zA-Z0-9_]+" placeholder="sin espacios, ej: juanperez">
+          </div>
           <div class="field">
             <label for="authEmail">Email</label>
             <input type="email" id="authEmail" placeholder="tu@email.com" required>
@@ -2593,6 +2607,8 @@ async function renderAccountSheet(){
     let authMode = 'login';
     const submitBtn = document.getElementById('authSubmitBtn');
     const forgotBtn = document.getElementById('forgotPasswordBtn');
+    const nameRow = document.getElementById('signupNameRow');
+    const usernameField = document.getElementById('signupUsernameField');
     document.querySelectorAll('#authModeToggle button').forEach(btn => {
       btn.addEventListener('click', () => {
         authMode = btn.dataset.mode;
@@ -2601,8 +2617,14 @@ async function renderAccountSheet(){
           b.classList.toggle('active', active);
           b.setAttribute('aria-pressed', active);
         });
-        submitBtn.textContent = authMode === 'login' ? 'Ingresar' : 'Crear cuenta';
-        forgotBtn.style.display = authMode === 'login' ? 'block' : 'none';
+        const isSignup = authMode === 'signup';
+        submitBtn.textContent = isSignup ? 'Crear cuenta' : 'Ingresar';
+        forgotBtn.style.display = isSignup ? 'none' : 'block';
+        nameRow.style.display = isSignup ? 'grid' : 'none';
+        usernameField.style.display = isSignup ? 'block' : 'none';
+        document.getElementById('authFirstName').required = isSignup;
+        document.getElementById('authLastName').required = isSignup;
+        document.getElementById('authUsername').required = isSignup;
         document.getElementById('authStatus').textContent = 'Una vez que ingreses, no vas a tener que volver a loguearte en este navegador.';
       });
     });
@@ -2639,17 +2661,18 @@ async function renderAccountSheet(){
     if(userFollowing.size){
       const { data: followedProfiles } = await supabaseClient
         .from('profiles')
-        .select('id, display_name')
+        .select('id, display_name, username')
         .in('id', [...userFollowing]);
       followingHtml = (followedProfiles || []).map(p => `
         <div class="my-plan-item" data-unfollow="${p.id}">
-          <div class="my-plan-info"><div class="my-plan-title">${escapeHtml(p.display_name || p.id)}</div></div>
+          <div class="my-plan-info"><div class="my-plan-title">${escapeHtml(p.display_name || (p.username ? '@' + p.username : p.id))}</div></div>
           <button type="button" class="secondary-btn" data-unfollow-btn="${p.id}"><i class="ti ti-user-minus"></i></button>
         </div>
       `).join('');
     }
 
-    const displayName = currentUserProfile?.display_name || currentUser.email;
+    const displayName = currentUserProfile?.first_name || currentUserProfile?.display_name || 'che';
+    const username = currentUserProfile?.username;
     const avatarUrl = currentUserProfile?.avatar_url;
     const initials = escapeHtml(String(displayName).slice(0,2).toUpperCase());
     const prefCount = userPreferences.size;
@@ -2671,7 +2694,7 @@ async function renderAccountSheet(){
               <h2 class="account-name" id="accountTitle">Bienvenido, ${escapeHtml(displayName)}</h2>
               <button type="button" class="account-name-edit-btn" id="editNameBtn" aria-label="Editar nombre"><i class="ti ti-pencil"></i></button>
             </div>
-            <div class="account-email">${escapeHtml(currentUser.email)}</div>
+            <div class="account-email">${username ? '@' + escapeHtml(username) : ''}</div>
           </div>
         </div>
 
@@ -2742,17 +2765,41 @@ async function handleAuthSubmit(e, getMode){
   const status = document.getElementById('authStatus');
 
   if(mode === 'signup'){
+    const firstName = document.getElementById('authFirstName').value.trim();
+    const lastName = document.getElementById('authLastName').value.trim();
+    const username = document.getElementById('authUsername').value.trim();
+    if(!firstName || !lastName || !username){
+      status.textContent = 'Completá nombre, apellido y nombre de usuario.';
+      return;
+    }
+    if(!/^[a-zA-Z0-9_]+$/.test(username)){
+      status.textContent = 'El nombre de usuario solo puede tener letras, números y guion bajo.';
+      return;
+    }
     status.textContent = 'Creando cuenta...';
     const { data, error } = await supabaseClient.auth.signUp({ email, password });
     if(error){
       status.textContent = error.message.includes('already registered')
         ? 'Ese email ya tiene una cuenta. Probá ingresar.'
         : 'No se pudo crear la cuenta. Probá de nuevo.';
-    }else if(!data.session){
-      status.textContent = 'Cuenta creada. Revisá tu email para confirmarla y después ingresá.';
-    }else{
-      status.textContent = 'Cuenta creada.';
+      return;
     }
+    if(data.user){
+      const { error: profileError } = await supabaseClient.from('profiles').upsert({
+        id: data.user.id,
+        first_name: firstName,
+        last_name: lastName,
+        username,
+        display_name: `${firstName} ${lastName}`.trim()
+      }, { onConflict: 'id' });
+      if(profileError){
+        status.textContent = profileError.message.includes('profiles_username_unique')
+          ? 'Ese nombre de usuario ya está en uso.'
+          : 'Cuenta creada, pero no se pudo guardar tu nombre de usuario.';
+        return;
+      }
+    }
+    status.textContent = data.session ? 'Cuenta creada.' : 'Cuenta creada. Revisá tu email para confirmarla y después ingresá.';
   }else{
     status.textContent = 'Ingresando...';
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -2846,7 +2893,7 @@ async function renderAdminSheet(){
   const usersList = document.getElementById('adminUsersList');
   const { data: profilesData, error } = await supabaseClient
     .from('profiles')
-    .select('id, display_name, role, verified')
+    .select('id, display_name, username, role, verified')
     .order('display_name');
   if(error || !profilesData){
     usersList.innerHTML = '<div class="my-plans-empty">No se pudieron cargar los usuarios.</div>';
@@ -2854,7 +2901,7 @@ async function renderAdminSheet(){
   }
   usersList.innerHTML = profilesData.map(p => `
     <div class="pref-item" data-user="${p.id}" style="align-items:center;">
-      <span style="flex:1; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(p.display_name || p.id)}</span>
+      <span style="flex:1; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(p.display_name || (p.username ? '@' + p.username : p.id))}</span>
       <select data-role-select="${p.id}">
         <option value="user" ${p.role === 'user' ? 'selected' : ''}>Usuario</option>
         <option value="organizer" ${p.role === 'organizer' ? 'selected' : ''}>Organizador</option>
