@@ -1047,6 +1047,51 @@
       background:var(--coral);
       color:var(--ink);
     }
+    .account-header{
+      display:flex; align-items:center; gap:14px;
+      padding-bottom:18px; margin-bottom:6px;
+      border-bottom:1px solid var(--border);
+    }
+    .account-avatar-wrap{position:relative; width:64px; height:64px; flex:none;}
+    .account-avatar{
+      width:64px; height:64px; border-radius:50%;
+      display:grid; place-items:center;
+      background:rgba(0,245,212,.18); color:var(--coral-2);
+      font-weight:900; font-size:22px;
+      object-fit:cover; cursor:pointer;
+      border:1px solid var(--border);
+    }
+    .account-avatar-edit{
+      position:absolute; bottom:-2px; right:-2px;
+      width:24px; height:24px; border-radius:50%;
+      display:grid; place-items:center;
+      background:var(--coral); color:var(--ink);
+      border:2px solid var(--bg);
+      font-size:13px; cursor:pointer;
+    }
+    .account-name-row{display:flex; align-items:center; gap:8px; min-width:0;}
+    .account-name{font-size:19px; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .account-name-edit-btn{flex:none; background:none; border:none; color:var(--muted); font-size:15px; cursor:pointer; padding:4px;}
+    .account-email{font-size:12px; color:var(--muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .pref-dropdown{
+      border:1px solid var(--border);
+      border-radius:14px;
+      margin-bottom:18px;
+      overflow:hidden;
+      background:rgba(247,241,232,.04);
+    }
+    .pref-dropdown summary{
+      list-style:none;
+      display:flex; align-items:center; gap:8px;
+      padding:13px 15px;
+      cursor:pointer;
+      font-weight:800; font-size:14px;
+    }
+    .pref-dropdown summary::-webkit-details-marker{display:none;}
+    .pref-dropdown summary .chevron{margin-left:auto; color:var(--muted); transition:transform .15s ease;}
+    .pref-dropdown[open] summary .chevron{transform:rotate(180deg);}
+    .pref-dropdown-count{color:var(--muted); font-weight:600; font-size:12px;}
+    .pref-dropdown .pref-list{padding:0 15px 13px; margin-bottom:0;}
     .pref-list{display:flex; flex-direction:column; gap:8px; margin-bottom:18px;}
     .pref-item{
       display:flex; align-items:center; gap:10px;
@@ -2426,17 +2471,48 @@ async function ensureProfile(){
   if(!currentUser) return;
   await supabaseClient
     .from('profiles')
-    .upsert({ id: currentUser.id, display_name: currentUser.email }, { onConflict: 'id' });
+    .upsert({ id: currentUser.id, display_name: currentUser.email }, { onConflict: 'id', ignoreDuplicates: true });
 }
 
 async function fetchCurrentUserProfile(){
   if(!currentUser){ currentUserProfile = null; return; }
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('role, verified')
+    .select('role, verified, display_name, avatar_url')
     .eq('id', currentUser.id)
     .maybeSingle();
-  currentUserProfile = error || !data ? { role:'user', verified:false } : data;
+  currentUserProfile = error || !data ? { role:'user', verified:false, display_name:currentUser.email, avatar_url:null } : data;
+}
+
+async function updateDisplayName(name){
+  if(!currentUser || !name.trim()) return;
+  await supabaseClient.from('profiles').update({ display_name: name.trim() }).eq('id', currentUser.id);
+  currentUserProfile.display_name = name.trim();
+}
+
+async function uploadAvatar(file){
+  if(!currentUser || !file) return;
+  if(!file.type.startsWith('image/')){
+    showToast('Elegí un archivo de imagen');
+    return;
+  }
+  if(file.size > 5 * 1024 * 1024){
+    showToast('La imagen no puede pesar más de 5MB');
+    return;
+  }
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${currentUser.id}/avatar.${ext}`;
+  const { error: uploadError } = await supabaseClient.storage.from('avatars').upload(path, file, { upsert:true });
+  if(uploadError){
+    showToast('No se pudo subir la foto. Probá de nuevo.');
+    return;
+  }
+  const { data } = supabaseClient.storage.from('avatars').getPublicUrl(path);
+  const avatarUrl = `${data.publicUrl}?t=${Date.now()}`;
+  await supabaseClient.from('profiles').update({ avatar_url: avatarUrl }).eq('id', currentUser.id);
+  currentUserProfile.avatar_url = avatarUrl;
+  renderAccountSheet();
+  showToast('Foto de perfil actualizada');
 }
 
 async function togglePreference(categoryId, checked){
@@ -2573,22 +2649,47 @@ async function renderAccountSheet(){
       `).join('');
     }
 
+    const displayName = currentUserProfile?.display_name || currentUser.email;
+    const avatarUrl = currentUserProfile?.avatar_url;
+    const initials = escapeHtml(String(displayName).slice(0,2).toUpperCase());
+    const prefCount = userPreferences.size;
+
     sheet.innerHTML = `
       <button type="button" class="sheet-close" id="closeAccount" aria-label="Cerrar"><span class="x-mark" aria-hidden="true">&times;</span></button>
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="form-content">
-        <h2 class="form-title" id="accountTitle">Mi cuenta</h2>
-        <p class="form-sub">${escapeHtml(currentUser.email)}</p>
+        <div class="account-header">
+          <div class="account-avatar-wrap">
+            ${avatarUrl
+              ? `<img class="account-avatar" id="avatarPreview" src="${escapeHtml(avatarUrl)}" alt="Tu foto de perfil">`
+              : `<div class="account-avatar" id="avatarPreview">${initials}</div>`}
+            <button type="button" class="account-avatar-edit" id="avatarEditBtn" aria-label="Cambiar foto de perfil"><i class="ti ti-camera"></i></button>
+            <input type="file" id="avatarInput" accept="image/*" hidden>
+          </div>
+          <div style="min-width:0; flex:1;">
+            <div class="account-name-row">
+              <h2 class="account-name" id="accountTitle">Bienvenido, ${escapeHtml(displayName)}</h2>
+              <button type="button" class="account-name-edit-btn" id="editNameBtn" aria-label="Editar nombre"><i class="ti ti-pencil"></i></button>
+            </div>
+            <div class="account-email">${escapeHtml(currentUser.email)}</div>
+          </div>
+        </div>
 
-        <h3 class="form-title" style="font-size:16px; margin-top:18px;">Mis planes</h3>
+        <h3 class="form-title" style="font-size:16px;">Mis planes</h3>
         <div class="my-plans-section">${myPlansHtml}</div>
 
         <h3 class="form-title" style="font-size:16px;">Organizadores que seguís</h3>
         <div class="my-plans-section">${followingHtml}</div>
 
-        <h3 class="form-title" style="font-size:16px;">Preferencias</h3>
-        <p class="form-sub" style="margin-top:-12px;">Elegí los tipos de evento que te interesan.</p>
-        <div class="pref-list">${prefItems}</div>
+        <details class="pref-dropdown">
+          <summary>
+            <i class="ti ti-heart"></i>
+            <span>Preferencias</span>
+            <span class="pref-dropdown-count">${prefCount ? `${prefCount} seleccionadas` : 'ninguna'}</span>
+            <i class="ti ti-chevron-down chevron"></i>
+          </summary>
+          <div class="pref-list">${prefItems}</div>
+        </details>
         ${hasRole('admin') ? '<button type="button" class="secondary-btn" id="adminPanelBtn" style="width:100%; margin-bottom:10px;"><i class="ti ti-shield-lock"></i>Panel de administración</button>' : ''}
         <button type="button" class="secondary-btn" id="logoutBtn" style="width:100%;"><i class="ti ti-logout"></i>Cerrar sesión</button>
       </div>
@@ -2614,6 +2715,19 @@ async function renderAccountSheet(){
     document.getElementById('adminPanelBtn')?.addEventListener('click', () => {
       closeAccountSheet();
       openAdminSheet();
+    });
+    document.getElementById('avatarEditBtn').addEventListener('click', () => {
+      document.getElementById('avatarInput').click();
+    });
+    document.getElementById('avatarPreview').addEventListener('click', () => {
+      document.getElementById('avatarInput').click();
+    });
+    document.getElementById('avatarInput').addEventListener('change', (e) => {
+      uploadAvatar(e.target.files[0]);
+    });
+    document.getElementById('editNameBtn').addEventListener('click', () => {
+      const newName = window.prompt('¿Cómo querés que te llamemos?', displayName);
+      if(newName && newName.trim()) updateDisplayName(newName).then(renderAccountSheet);
     });
   }
 
