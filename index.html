@@ -1693,14 +1693,14 @@ function getInteraction(id){
   return {interested:!!raw.interested, going:!!raw.going};
 }
 
-function setInteraction(id, next){
+async function setInteraction(id, next){
   if(!next.interested && !next.going){
     delete state.interactions[id];
   }else{
     state.interactions[id] = next;
   }
   saveLocalJson(STORAGE_KEYS.interactions, state.interactions);
-  syncInteractionToSupabase(id, next);
+  await syncInteractionToSupabase(id, next);
 }
 
 async function syncInteractionToSupabase(id, next){
@@ -2219,19 +2219,21 @@ function openDetail(id){
   renderMap(getFilteredEvents());
 }
 
-function toggleInterest(id){
+async function toggleInterest(id){
   const current = getInteraction(id);
-  setInteraction(id, {...current, interested:!current.interested});
+  const syncing = setInteraction(id, {...current, interested:!current.interested});
   openDetail(id);
   render();
+  await syncing;
 }
 
-function toggleGoing(id){
+async function toggleGoing(id){
   const current = getInteraction(id);
   const going = !current.going;
-  setInteraction(id, {interested:going ? true : current.interested, going});
+  const syncing = setInteraction(id, {interested:going ? true : current.interested, going});
   openDetail(id);
   render();
+  await syncing;
 }
 
 function openRoute(ev){
