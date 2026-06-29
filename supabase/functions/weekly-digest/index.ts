@@ -14,7 +14,7 @@ const APP_URL = Deno.env.get("APP_URL") ?? "https://example.com";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 function eventRow(ev: any) {
-  return `<li><strong>${ev.title}</strong> — ${ev.organizer} · ${ev.date} ${ev.time}<br>${ev.address}</li>`;
+  return `<li><strong><a href="${APP_URL}/?evento=${ev.id}">${ev.title}</a></strong> — ${ev.organizer} · ${ev.date} ${ev.time}<br>${ev.address}</li>`;
 }
 
 async function sendEmail(to: string, subject: string, html: string) {
