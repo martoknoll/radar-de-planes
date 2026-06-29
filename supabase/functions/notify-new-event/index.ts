@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
           `<p><strong>${event.organizer}</strong>, a quien seguís, publicó un nuevo plan.</p>
            <h2>${event.title}</h2>
            <p>${event.date} · ${event.time}<br>${event.address}</p>
-           <p><a href="${APP_URL}">Ver en Sonda</a></p>`,
+           <p><a href="${APP_URL}/?evento=${event.id}">Ver en Sonda</a></p>`,
         ),
       ),
     );
