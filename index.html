@@ -1420,6 +1420,25 @@ const STORAGE_KEYS = {
 const BA_CENTER = [-34.6037, -58.3816];
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=72';
 
+const CATEGORY_FALLBACK_IMG = {
+  cine: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=72',
+  musica: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=72',
+  teatro: 'https://images.unsplash.com/photo-1503095396549-807759245b35?w=800&q=72',
+  expo: 'https://images.unsplash.com/photo-1531913764164-f85c52e6e654?w=800&q=72',
+  feria: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=800&q=72',
+  gastro: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=72',
+  taller: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=800&q=72',
+  charla: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&q=72',
+  lectura: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=72',
+  juegos: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?w=800&q=72',
+  deporte: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=800&q=72',
+  social: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=72'
+};
+
+function defaultImgFor(category){
+  return CATEGORY_FALLBACK_IMG[category] || FALLBACK_IMG;
+}
+
 const CATEGORIES = [
   {id:'cine', label:'Cine', icon:'ti-movie', emoji:'🎬'},
   {id:'musica', label:'Música', icon:'ti-music', emoji:'🎵'},
@@ -1912,7 +1931,7 @@ function eventCardHtml(ev){
   if(interaction.interested) status += '<span class="status-badge interested"><i class="ti ti-star-filled"></i>Me interesa</span>';
   return `
     <button type="button" class="event-card" data-card-id="${ev.id}" aria-label="Ver detalle de ${escapeHtml(ev.title)}">
-      <img class="event-img" src="${escapeHtml(ev.img || FALLBACK_IMG)}" alt="" loading="lazy" onerror="this.src='${FALLBACK_IMG}'">
+      <img class="event-img" src="${escapeHtml(ev.img || defaultImgFor(ev.category))}" alt="" loading="lazy" onerror="this.src='${defaultImgFor(ev.category)}'">
       <span class="event-body">
         <span class="event-top">
           <span class="category-label"><i class="ti ${cat.icon}" aria-hidden="true"></i>${escapeHtml(cat.label)}</span>
@@ -2088,7 +2107,7 @@ function openDetail(id){
     <button type="button" class="sheet-close" id="closeDetailBtn" aria-label="Cerrar detalle"><span class="x-mark" aria-hidden="true">&times;</span></button>
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="detail-hero">
-      <img class="detail-img" src="${escapeHtml(ev.img || FALLBACK_IMG)}" alt="${escapeHtml(ev.title)}" onerror="this.src='${FALLBACK_IMG}'">
+      <img class="detail-img" src="${escapeHtml(ev.img || defaultImgFor(ev.category))}" alt="${escapeHtml(ev.title)}" onerror="this.src='${defaultImgFor(ev.category)}'">
     </div>
     <div class="detail-content">
       <span class="detail-kicker"><i class="ti ${cat.icon}" aria-hidden="true"></i> ${escapeHtml(cat.label)}</span>
@@ -2397,16 +2416,17 @@ async function handleFormSubmit(event){
     return;
   }
   const pos = formMarker.getLatLng();
+  const category = document.getElementById('fCategory').value;
   const row = {
     title:document.getElementById('fTitle').value.trim(),
-    category:document.getElementById('fCategory').value,
+    category,
     price:document.getElementById('fPrice').value.trim(),
     date:dateValue,
     time:document.getElementById('fTime').value,
     address:document.getElementById('fAddress').value.trim(),
     organizer:document.getElementById('fOrganizer').value.trim(),
     description:document.getElementById('fDesc').value.trim(),
-    img:validateImageUrl(document.getElementById('fImg').value.trim()) || FALLBACK_IMG,
+    img:validateImageUrl(document.getElementById('fImg').value.trim()) || defaultImgFor(category),
     ticket_url:normalizeWebsite(document.getElementById('fTicketUrl').value.trim()),
     lat:pos.lat,
     lng:pos.lng
