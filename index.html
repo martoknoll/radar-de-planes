@@ -462,6 +462,72 @@
     }
     .pin.going.active::after{color:var(--mint);}
     .pin.interested.active::after{color:var(--yellow);}
+    .pin-cluster{
+      position:relative;
+      display:flex;align-items:center;gap:4px;
+      padding:0 10px 0 8px;
+      height:34px;
+      border-radius:17px;
+      background:var(--surface2);
+      border:2px solid var(--primary);
+      box-shadow:0 8px 20px rgba(0,0,0,.35), 0 0 0 4px rgba(0,245,212,.18);
+      cursor:pointer;
+      white-space:nowrap;
+      transition:transform .15s ease;
+    }
+    .pin-cluster:hover{transform:scale(1.08);}
+    .pin-cluster-count{
+      font-size:11px;font-weight:700;
+      color:var(--primary);
+      line-height:1;
+    }
+    /* venue sheet */
+    .venue-header{
+      display:flex;align-items:flex-start;gap:12px;
+      padding:20px 20px 14px;
+    }
+    .venue-header-icon{
+      flex:0 0 auto;
+      width:38px;height:38px;
+      border-radius:10px;
+      background:var(--surface2);
+      display:grid;place-items:center;
+      font-size:18px;
+    }
+    .venue-header-text{display:flex;flex-direction:column;gap:2px;min-width:0;}
+    .venue-title{font-size:15px;font-weight:700;color:var(--text);line-height:1.2;}
+    .venue-subtitle{font-size:12px;color:var(--muted);}
+    .venue-events-scroll{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      overflow-y:auto;
+      padding:0 16px 24px;
+      flex:1;
+    }
+    .venue-event-card{
+      display:flex;gap:12px;align-items:center;
+      background:var(--surface2);
+      border:none;
+      border-radius:14px;
+      padding:10px;
+      cursor:pointer;
+      text-align:left;
+      width:100%;
+      transition:background .15s;
+    }
+    .venue-event-card:hover{background:var(--surface3);}
+    .venue-card-img{
+      width:60px;height:60px;
+      border-radius:10px;
+      object-fit:cover;
+      flex:0 0 auto;
+    }
+    .venue-card-body{display:flex;flex-direction:column;gap:2px;min-width:0;}
+    .venue-card-cat{font-size:11px;color:var(--muted);}
+    .venue-card-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.3;}
+    .venue-card-meta{font-size:12px;color:var(--muted);}
+    .venue-card-price{font-size:12px;color:var(--primary);font-weight:600;}
     @keyframes pinPulse{
       0%{transform:scale(.85); opacity:.8;}
       100%{transform:scale(1.5); opacity:0;}
@@ -1374,6 +1440,10 @@
     <article class="sheet" id="organizerSheet" role="dialog" aria-modal="true" aria-labelledby="organizerTitle"></article>
   </div>
 
+  <div class="sheet-overlay" id="venueOverlay" aria-hidden="true">
+    <article class="sheet" id="venueSheet" role="dialog" aria-modal="true" aria-labelledby="venueTitle"></article>
+  </div>
+
   <div class="sheet-overlay" id="locationOverlay" aria-hidden="true">
     <article class="sheet" id="locationSheet" role="dialog" aria-modal="true" aria-labelledby="locationModalTitle">
       <div class="sheet-handle" aria-hidden="true"></div>
@@ -1841,26 +1911,96 @@ function makeEventIcon(ev){
   });
 }
 
+function makeClusterIcon(events){
+  const emojis = [...new Set(events.map(ev => catInfo(ev.category).emoji))].slice(0,2).join('');
+  return L.divIcon({
+    className:'',
+    html:`<div class="pin-cluster"><span class="pin-emoji" aria-hidden="true">${emojis}</span><span class="pin-cluster-count">${events.length}</span></div>`,
+    iconSize:[null,34],
+    iconAnchor:[0,17],
+    popupAnchor:[0,-22]
+  });
+}
+
+function openVenueSheet(events){
+  const address = events[0].address || 'Este lugar';
+  const cardsHtml = events.map(ev => {
+    const cat = catInfo(ev.category);
+    return `
+      <button type="button" class="venue-event-card" data-open-event="${escapeHtml(ev.id)}">
+        <img class="venue-card-img" src="${escapeHtml(ev.img || defaultImgFor(ev.category))}" alt="" loading="lazy" onerror="this.src='${defaultImgFor(ev.category)}'">
+        <div class="venue-card-body">
+          <span class="venue-card-cat">${cat.emoji} ${escapeHtml(cat.label)}</span>
+          <span class="venue-card-title">${escapeHtml(ev.title)}</span>
+          <span class="venue-card-meta">${fmtDate(ev.date)} · ${escapeHtml(ev.time)}</span>
+          <span class="venue-card-price">${escapeHtml(ev.price)}</span>
+        </div>
+      </button>
+    `;
+  }).join('');
+
+  els.venueSheet.innerHTML = `
+    <button type="button" class="sheet-close" id="closeVenueBtn" aria-label="Cerrar"><span class="x-mark" aria-hidden="true">&times;</span></button>
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="venue-header">
+      <div class="venue-header-icon" aria-hidden="true">📍</div>
+      <div class="venue-header-text">
+        <span class="venue-title" id="venueTitle">${escapeHtml(address)}</span>
+        <span class="venue-subtitle">${events.length} plan${events.length === 1 ? '' : 'es'} en este lugar</span>
+      </div>
+    </div>
+    <div class="venue-events-scroll">${cardsHtml}</div>
+  `;
+
+  openSheet(els.venueOverlay);
+
+  document.getElementById('closeVenueBtn').addEventListener('click', () => closeSheet(els.venueOverlay));
+  els.venueSheet.querySelectorAll('[data-open-event]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      closeSheet(els.venueOverlay);
+      openDetail(btn.dataset.openEvent);
+    });
+  });
+}
+
 function renderMap(list){
   if(!map) return;
   markersLayer.clearLayers();
   markerById = {};
 
+  // Group events that share the same coordinates
+  const groups = {};
   list.forEach(ev => {
-    const marker = L.marker([Number(ev.lat), Number(ev.lng)], {icon:makeEventIcon(ev)}).addTo(markersLayer);
-    markerById[ev.id] = marker;
-    marker.bindPopup(`
-      <div class="popup-kicker">${escapeHtml(catInfo(ev.category).label)}</div>
-      <div class="popup-title">${escapeHtml(ev.title)}</div>
-      <div class="popup-meta">${fmtDate(ev.date)} · ${escapeHtml(ev.time)} · ${escapeHtml(ev.price)}${ev._dist != null ? ' · ' + fmtDist(ev._dist) : ''}</div>
-      <button type="button" class="popup-button" data-open-detail="${ev.id}">Ver detalle</button>
-    `);
-    marker.on('click', () => {
-      state.selectedId = ev.id;
-      highlightCard(ev.id);
-      renderMap(getFilteredEvents());
-      markerById[ev.id]?.openPopup();
-    });
+    const key = `${Number(ev.lat).toFixed(5)},${Number(ev.lng).toFixed(5)}`;
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(ev);
+  });
+
+  Object.values(groups).forEach(events => {
+    const lat = Number(events[0].lat);
+    const lng = Number(events[0].lng);
+
+    if(events.length === 1){
+      const ev = events[0];
+      const marker = L.marker([lat, lng], {icon:makeEventIcon(ev)}).addTo(markersLayer);
+      markerById[ev.id] = marker;
+      marker.bindPopup(`
+        <div class="popup-kicker">${escapeHtml(catInfo(ev.category).label)}</div>
+        <div class="popup-title">${escapeHtml(ev.title)}</div>
+        <div class="popup-meta">${fmtDate(ev.date)} · ${escapeHtml(ev.time)} · ${escapeHtml(ev.price)}${ev._dist != null ? ' · ' + fmtDist(ev._dist) : ''}</div>
+        <button type="button" class="popup-button" data-open-detail="${ev.id}">Ver detalle</button>
+      `);
+      marker.on('click', () => {
+        state.selectedId = ev.id;
+        highlightCard(ev.id);
+        renderMap(getFilteredEvents());
+        markerById[ev.id]?.openPopup();
+      });
+    } else {
+      const marker = L.marker([lat, lng], {icon:makeClusterIcon(events)}).addTo(markersLayer);
+      events.forEach(ev => { markerById[ev.id] = marker; });
+      marker.on('click', () => openVenueSheet(events));
+    }
   });
 
   if(state.userLocation){
@@ -3405,7 +3545,7 @@ function bindEvents(){
   });
   els.skipLocationBtn.addEventListener('click', closeLocationModal);
 
-  [els.detailOverlay, els.formOverlay, els.accountOverlay, els.adminOverlay, els.myEventsOverlay, els.organizerOverlay, els.locationOverlay].forEach(overlay => {
+  [els.detailOverlay, els.formOverlay, els.accountOverlay, els.adminOverlay, els.myEventsOverlay, els.organizerOverlay, els.venueOverlay, els.locationOverlay].forEach(overlay => {
     overlay.addEventListener('click', event => {
       if(event.target === overlay) closeSheet(overlay);
     });
@@ -3413,6 +3553,7 @@ function bindEvents(){
 
   window.addEventListener('keydown', event => {
     if(event.key === 'Escape'){
+      if(els.venueOverlay.classList.contains('open')) closeSheet(els.venueOverlay);
       if(els.detailOverlay.classList.contains('open')) closeSheet(els.detailOverlay);
       if(els.formOverlay.classList.contains('open')) closeSheet(els.formOverlay);
       if(els.adminOverlay.classList.contains('open')) closeSheet(els.adminOverlay);
@@ -3481,6 +3622,8 @@ function cacheElements(){
   els.myEventsSheet = document.getElementById('myEventsSheet');
   els.organizerOverlay = document.getElementById('organizerOverlay');
   els.organizerSheet = document.getElementById('organizerSheet');
+  els.venueOverlay = document.getElementById('venueOverlay');
+  els.venueSheet = document.getElementById('venueSheet');
   els.locationOverlay = document.getElementById('locationOverlay');
   els.activateLocationBtn = document.getElementById('activateLocationBtn');
   els.skipLocationBtn = document.getElementById('skipLocationBtn');
