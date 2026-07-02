@@ -2054,7 +2054,7 @@ async function openVenueSheetForProfile(venue, eventsAtVenue){
   let sectionLabel = 'Planes en este espacio';
   if(!displayEvents.length){
     displayEvents = state.events
-      .filter(ev => ev.created_by === venue.id && ev.date >= today)
+      .filter(ev => ev.createdBy === venue.id && ev.date >= today)
       .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     if(displayEvents.length) sectionLabel = 'Próximos planes en este espacio';
   }
