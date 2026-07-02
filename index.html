@@ -110,14 +110,10 @@
     }
     .brand-mark{
       width:36px;height:36px;
+      border-radius:10px;
       flex:0 0 auto;
-      filter:drop-shadow(0 0 6px rgba(0,245,212,.45));
+      object-fit:contain;
     }
-    @keyframes brandGlow{
-      0%,100%{filter:drop-shadow(0 0 5px rgba(0,245,212,.4));}
-      50%{filter:drop-shadow(0 0 11px rgba(0,245,212,.7));}
-    }
-    .brand-mark{animation:brandGlow 3s ease-in-out infinite;}
     .brand-name{
       display:block;
       font-family:'Space Grotesk',sans-serif;
@@ -1251,22 +1247,7 @@
     <header class="app-header" role="banner">
       <div class="brand-row">
         <div class="brand" aria-label="Sonda">
-          <svg class="brand-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <!-- S upper arc (cyan) -->
-            <path d="M 12 17 A 9 9 0 1 0 28 17" stroke="#00F5D4" stroke-width="3" stroke-linecap="round"/>
-            <!-- S lower arc (purple) -->
-            <path d="M 28 23 A 9 9 0 1 1 12 23" stroke="#7C5CFF" stroke-width="3" stroke-linecap="round"/>
-            <!-- Center dot -->
-            <circle cx="20" cy="20" r="2.5" fill="#00F5D4"/>
-            <!-- Left signal waves (cyan) -->
-            <path d="M 13 16 Q 6 20 13 24" stroke="#00F5D4" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M 10 14 Q 2 20 10 26" stroke="#00F5D4" stroke-width="2" stroke-linecap="round"/>
-            <path d="M 7 12 Q -1 20 7 28" stroke="#00F5D4" stroke-width="1.8" stroke-linecap="round"/>
-            <!-- Right signal waves (purple) -->
-            <path d="M 27 16 Q 34 20 27 24" stroke="#7C5CFF" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M 30 14 Q 38 20 30 26" stroke="#7C5CFF" stroke-width="2" stroke-linecap="round"/>
-            <path d="M 33 12 Q 41 20 33 28" stroke="#7C5CFF" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
+          <img class="brand-mark" src="https://fxywhalfwhhqzggayswc.supabase.co/storage/v1/object/public/avatars/file_00000000744c720eba4f161649d25936.png" alt="Sonda" aria-hidden="true">
           <div>
             <span class="brand-name">Sonda</span>
             <span class="brand-kicker" id="locationLabel">Qué está pasando cerca tuyo</span>
