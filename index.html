@@ -1579,6 +1579,23 @@ const ALL_CATEGORY_CHIPS = [{id:'todos', label:'Todos', icon:'ti-sparkles', emoj
 
 const SEED_EVENTS = [];
 
+const VENUE_TYPES = [
+  { id: 'teatro',          label: 'Teatro',            emoji: '🎭' },
+  { id: 'bar',             label: 'Bar / Pub',         emoji: '🍺' },
+  { id: 'centro_cultural', label: 'Centro cultural',   emoji: '🏛️' },
+  { id: 'galeria',         label: 'Galería de arte',   emoji: '🖼️' },
+  { id: 'restaurante',     label: 'Restaurante',       emoji: '🍽️' },
+  { id: 'club',            label: 'Club / Boliche',    emoji: '🎵' },
+  { id: 'cafe',            label: 'Café / Librería',   emoji: '☕' },
+  { id: 'biblioteca',      label: 'Biblioteca',        emoji: '📚' },
+  { id: 'espacio_cowork',  label: 'Cowork / Estudio',  emoji: '💻' },
+  { id: 'otro',            label: 'Otro espacio',      emoji: '📍' },
+];
+
+function venueTypeInfo(id){
+  return VENUE_TYPES.find(t => t.id === id) || { emoji: '📍', label: 'Espacio' };
+}
+
 const state = {
   events:[],
   venueProfiles:[],
@@ -2031,10 +2048,13 @@ function openVenueSheet(events){
 }
 
 function makeVenueIcon(venue){
-  const initials = escapeHtml(String(venue.display_name || venue.username || '?').slice(0,1).toUpperCase());
+  const vt = venueTypeInfo(venue.venue_type);
+  const inner = venue.avatar_url
+    ? `<img src="${escapeHtml(venue.avatar_url)}" style="width:26px;height:26px;border-radius:6px;object-fit:cover;" alt="">`
+    : `<span style="font-size:17px;line-height:1;" aria-hidden="true">${vt.emoji}</span>`;
   return L.divIcon({
     className:'',
-    html:`<div class="pin-venue" title="${escapeHtml(venue.display_name || '')}">${venue.avatar_url ? `<img src="${escapeHtml(venue.avatar_url)}" style="width:26px;height:26px;border-radius:6px;object-fit:cover;" alt="">` : `<span style="font-size:13px;font-weight:700;color:#a78bfa;">${initials}</span>`}</div>`,
+    html:`<div class="pin-venue" title="${escapeHtml(venue.display_name || '')}">${inner}</div>`,
     iconSize:[34,34],
     iconAnchor:[17,17],
     popupAnchor:[0,-22]
@@ -2086,7 +2106,7 @@ async function openVenueSheetForProfile(venue, eventsAtVenue){
         : `<div class="venue-header-icon" aria-hidden="true">🏠</div>`}
       <div class="venue-header-text">
         <span class="venue-title">${escapeHtml(name)}</span>
-        <span class="venue-subtitle">${escapeHtml(venue.venue_address || '')}</span>
+        <span class="venue-subtitle">${venue.venue_type ? escapeHtml(venueTypeInfo(venue.venue_type).label) + (venue.venue_address ? ' · ' + escapeHtml(venue.venue_address) : '') : escapeHtml(venue.venue_address || '')}</span>
       </div>
     </div>
     ${photosHtml}
@@ -2798,10 +2818,10 @@ async function fetchCurrentUserProfile(){
   if(!currentUser){ currentUserProfile = null; return; }
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('role, verified, display_name, avatar_url, username, first_name, last_name, bio, instagram, twitter, website, facebook, venue_address, venue_lat, venue_lng')
+    .select('role, verified, display_name, avatar_url, username, first_name, last_name, bio, instagram, twitter, website, facebook, venue_address, venue_lat, venue_lng, venue_type')
     .eq('id', currentUser.id)
     .maybeSingle();
-  currentUserProfile = error || !data ? { role:'user', verified:false, display_name:currentUser.email, avatar_url:null, username:null, first_name:null, last_name:null, bio:null, instagram:null, twitter:null, website:null, facebook:null, venue_address:null, venue_lat:null, venue_lng:null } : data;
+  currentUserProfile = error || !data ? { role:'user', verified:false, display_name:currentUser.email, avatar_url:null, username:null, first_name:null, last_name:null, bio:null, instagram:null, twitter:null, website:null, facebook:null, venue_address:null, venue_lat:null, venue_lng:null, venue_type:null } : data;
 }
 
 function normalizeSocialHandle(value){
@@ -2825,7 +2845,7 @@ async function geocodeAddressToCoords(address){
   return null;
 }
 
-async function updateProfile(firstName, lastName, username, bio, instagram, twitter, website, facebook, venueAddress){
+async function updateProfile(firstName, lastName, username, bio, instagram, twitter, website, facebook, venueAddress, venueType){
   if(!currentUser) return { error: 'Completá nombre, apellido y nombre de usuario.' };
   firstName = firstName.trim();
   lastName = lastName.trim();
@@ -2861,7 +2881,8 @@ async function updateProfile(firstName, lastName, username, bio, instagram, twit
     display_name: `${firstName} ${lastName}`.trim(),
     venue_address: venueAddress,
     venue_lat: venueLat,
-    venue_lng: venueLng
+    venue_lng: venueLng,
+    venue_type: venueType || null
   }).eq('id', currentUser.id);
   if(error){
     return { error: error.message.includes('profiles_username_unique') ? 'Ese nombre de usuario ya está en uso.' : 'No se pudo guardar. Probá de nuevo.' };
@@ -2878,6 +2899,7 @@ async function updateProfile(firstName, lastName, username, bio, instagram, twit
   currentUserProfile.venue_address = venueAddress;
   currentUserProfile.venue_lat = venueLat;
   currentUserProfile.venue_lng = venueLng;
+  currentUserProfile.venue_type = venueType || null;
   return { error: null };
 }
 
@@ -2909,7 +2931,7 @@ async function uploadAvatar(file){
 async function fetchVenueProfiles(){
   const { data } = await supabaseClient
     .from('profiles')
-    .select('id, display_name, username, avatar_url, venue_address, venue_lat, venue_lng')
+    .select('id, display_name, username, avatar_url, venue_address, venue_lat, venue_lng, venue_type')
     .eq('verified', true)
     .not('venue_lat', 'is', null)
     .not('venue_lng', 'is', null);
@@ -3169,6 +3191,13 @@ async function renderAccountSheet(){
               <div style="margin:12px 0 6px;padding-top:12px;border-top:1px solid var(--border);">
                 <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">📍 Ubicación del espacio</div>
                 <div class="field" style="margin-bottom:6px;">
+                  <label for="editVenueType">Tipo de espacio</label>
+                  <select id="editVenueType">
+                    <option value="">— Elegí un tipo —</option>
+                    ${VENUE_TYPES.map(t => `<option value="${t.id}" ${currentUserProfile?.venue_type === t.id ? 'selected' : ''}>${t.emoji} ${t.label}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="field" style="margin-bottom:6px;">
                   <label for="editVenueAddress">Dirección del espacio</label>
                   <input type="text" id="editVenueAddress" maxlength="200" placeholder="Ej: Av. Corrientes 1234, CABA" value="${escapeHtml(currentUserProfile?.venue_address || '')}">
                 </div>
@@ -3324,8 +3353,9 @@ async function renderAccountSheet(){
       const website = document.getElementById('editWebsite').value;
       const facebook = document.getElementById('editFacebook').value;
       const venueAddress = document.getElementById('editVenueAddress')?.value || '';
+      const venueType = document.getElementById('editVenueType')?.value || '';
       status.textContent = 'Guardando...';
-      const { error } = await updateProfile(firstName, lastName, username, bio, instagram, twitter, website, facebook, venueAddress);
+      const { error } = await updateProfile(firstName, lastName, username, bio, instagram, twitter, website, facebook, venueAddress, venueType);
       if(error){
         status.textContent = error;
         return;
