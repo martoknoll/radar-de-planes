@@ -2048,20 +2048,33 @@ async function openVenueSheetForProfile(venue, eventsAtVenue){
     ? `<div class="venue-photo-carousel">${photos.map(p => `<img src="${escapeHtml(p.photo_url)}" alt="" loading="lazy">`).join('')}</div>`
     : '';
 
-  const cardsHtml = eventsAtVenue.length
-    ? eventsAtVenue.map(ev => {
-        const cat = catInfo(ev.category);
-        return `
-          <button type="button" class="venue-event-card" data-open-event="${escapeHtml(ev.id)}">
-            <img class="venue-card-img" src="${escapeHtml(ev.img || defaultImgFor(ev.category))}" alt="" loading="lazy" onerror="this.src='${defaultImgFor(ev.category)}'">
-            <div class="venue-card-body">
-              <span class="venue-card-cat">${cat.emoji} ${escapeHtml(cat.label)}</span>
-              <span class="venue-card-title">${escapeHtml(ev.title)}</span>
-              <span class="venue-card-meta">${fmtDate(ev.date)} · ${escapeHtml(ev.time)}</span>
-              <span class="venue-card-price">${escapeHtml(ev.price)}</span>
-            </div>
-          </button>`;
-      }).join('')
+  // If no events match the current filter, fall back to all upcoming events at this venue
+  const today = todayStr();
+  let displayEvents = eventsAtVenue;
+  let sectionLabel = 'Planes en este espacio';
+  if(!displayEvents.length){
+    displayEvents = state.events
+      .filter(ev => ev.created_by === venue.id && ev.date >= today)
+      .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    if(displayEvents.length) sectionLabel = 'Próximos planes en este espacio';
+  }
+
+  function venueEventCard(ev){
+    const cat = catInfo(ev.category);
+    return `
+      <button type="button" class="venue-event-card" data-open-event="${escapeHtml(ev.id)}">
+        <img class="venue-card-img" src="${escapeHtml(ev.img || defaultImgFor(ev.category))}" alt="" loading="lazy" onerror="this.src='${defaultImgFor(ev.category)}'">
+        <div class="venue-card-body">
+          <span class="venue-card-cat">${cat.emoji} ${escapeHtml(cat.label)}</span>
+          <span class="venue-card-title">${escapeHtml(ev.title)}</span>
+          <span class="venue-card-meta">${fmtDate(ev.date)} · ${escapeHtml(ev.time)}</span>
+          <span class="venue-card-price">${escapeHtml(ev.price)}</span>
+        </div>
+      </button>`;
+  }
+
+  const cardsHtml = displayEvents.length
+    ? displayEvents.map(venueEventCard).join('')
     : `<div style="padding:16px 0;color:var(--muted);font-size:14px;text-align:center;">No hay planes programados por ahora</div>`;
 
   els.venueSheet.innerHTML = `
@@ -2077,7 +2090,7 @@ async function openVenueSheetForProfile(venue, eventsAtVenue){
       </div>
     </div>
     ${photosHtml}
-    <div style="padding:0 16px 8px;"><span style="font-size:13px;font-weight:600;color:var(--text);">Planes en este espacio</span></div>
+    <div style="padding:0 16px 8px;"><span style="font-size:13px;font-weight:600;color:var(--text);">${sectionLabel}</span></div>
     <div class="venue-events-scroll">${cardsHtml}</div>
   `;
 
