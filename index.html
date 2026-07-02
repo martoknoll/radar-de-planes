@@ -895,6 +895,7 @@
       transition:opacity .18s ease;
     }
     .sheet-overlay.open{opacity:1; pointer-events:auto;}
+    .sheet-overlay.on-top{z-index:1010;}
     .sheet{
       position:relative;
       width:100%;
@@ -2024,8 +2025,7 @@ function openVenueSheet(events){
   document.getElementById('closeVenueBtn').addEventListener('click', () => closeSheet(els.venueOverlay));
   els.venueSheet.querySelectorAll('[data-open-event]').forEach(btn => {
     btn.addEventListener('click', () => {
-      closeSheet(els.venueOverlay);
-      openDetail(btn.dataset.openEvent);
+      openDetail(btn.dataset.openEvent, () => openSheet(els.venueOverlay));
     });
   });
 }
@@ -2086,8 +2086,7 @@ async function openVenueSheetForProfile(venue, eventsAtVenue){
   document.getElementById('closeVenueBtn').addEventListener('click', () => closeSheet(els.venueOverlay));
   els.venueSheet.querySelectorAll('[data-open-event]').forEach(btn => {
     btn.addEventListener('click', () => {
-      closeSheet(els.venueOverlay);
-      openDetail(btn.dataset.openEvent);
+      openDetail(btn.dataset.openEvent, () => openSheet(els.venueOverlay));
     });
   });
 }
@@ -2097,48 +2096,32 @@ function renderMap(list){
   markersLayer.clearLayers();
   markerById = {};
 
-  // Group events that share the same coordinates
-  const groups = {};
   list.forEach(ev => {
-    const key = `${Number(ev.lat).toFixed(5)},${Number(ev.lng).toFixed(5)}`;
-    if(!groups[key]) groups[key] = [];
-    groups[key].push(ev);
+    const lat = Number(ev.lat);
+    const lng = Number(ev.lng);
+    const marker = L.marker([lat, lng], {icon:makeEventIcon(ev)}).addTo(markersLayer);
+    markerById[ev.id] = marker;
+    marker.bindPopup(`
+      <div class="popup-kicker">${escapeHtml(catInfo(ev.category).label)}</div>
+      <div class="popup-title">${escapeHtml(ev.title)}</div>
+      <div class="popup-meta">${fmtDate(ev.date)} · ${escapeHtml(ev.time)} · ${escapeHtml(ev.price)}${ev._dist != null ? ' · ' + fmtDist(ev._dist) : ''}</div>
+      <button type="button" class="popup-button" data-open-detail="${ev.id}">Ver detalle</button>
+    `);
+    marker.on('click', () => {
+      state.selectedId = ev.id;
+      highlightCard(ev.id);
+      renderMap(getFilteredEvents());
+      markerById[ev.id]?.openPopup();
+    });
   });
 
-  Object.values(groups).forEach(events => {
-    const lat = Number(events[0].lat);
-    const lng = Number(events[0].lng);
-
-    if(events.length === 1){
-      const ev = events[0];
-      const marker = L.marker([lat, lng], {icon:makeEventIcon(ev)}).addTo(markersLayer);
-      markerById[ev.id] = marker;
-      marker.bindPopup(`
-        <div class="popup-kicker">${escapeHtml(catInfo(ev.category).label)}</div>
-        <div class="popup-title">${escapeHtml(ev.title)}</div>
-        <div class="popup-meta">${fmtDate(ev.date)} · ${escapeHtml(ev.time)} · ${escapeHtml(ev.price)}${ev._dist != null ? ' · ' + fmtDist(ev._dist) : ''}</div>
-        <button type="button" class="popup-button" data-open-detail="${ev.id}">Ver detalle</button>
-      `);
-      marker.on('click', () => {
-        state.selectedId = ev.id;
-        highlightCard(ev.id);
-        renderMap(getFilteredEvents());
-        markerById[ev.id]?.openPopup();
-      });
-    } else {
-      const marker = L.marker([lat, lng], {icon:makeClusterIcon(events)}).addTo(markersLayer);
-      events.forEach(ev => { markerById[ev.id] = marker; });
-      marker.on('click', () => openVenueSheet(events));
-    }
-  });
-
-  // Render venue pins for verified organizers (skip coords already covered by events)
-  const eventKeys = new Set(Object.keys(groups));
+  // Render venue pins for verified organizers
+  const eventLatLngs = new Set(list.map(ev => `${Number(ev.lat).toFixed(5)},${Number(ev.lng).toFixed(5)}`));
   state.venueProfiles.forEach(venue => {
     const lat = Number(venue.venue_lat);
     const lng = Number(venue.venue_lng);
     const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
-    if(eventKeys.has(key)) return; // events already shown here
+    if(eventLatLngs.has(key)) return; // events already shown here
     const eventsAtVenue = list.filter(ev =>
       Number(ev.lat).toFixed(5) === lat.toFixed(5) && Number(ev.lng).toFixed(5) === lng.toFixed(5)
     );
@@ -2362,7 +2345,7 @@ function selectOnMap(id){
   renderMap(getFilteredEvents());
 }
 
-function openDetail(id){
+function openDetail(id, backFn){
   const ev = state.events.find(item => item.id === id);
   if(!ev) return;
   state.selectedId = id;
@@ -2371,7 +2354,10 @@ function openDetail(id){
   const cat = catInfo(ev.category);
 
   els.detailSheet.innerHTML = `
-    <button type="button" class="sheet-close" id="closeDetailBtn" aria-label="Cerrar detalle"><span class="x-mark" aria-hidden="true">&times;</span></button>
+    <div style="position:absolute;top:14px;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:0 14px;z-index:2;">
+      ${backFn ? `<button type="button" class="secondary-btn" id="backDetailBtn" style="padding:6px 10px;font-size:13px;gap:4px;"><i class="ti ti-arrow-left"></i>Volver</button>` : `<span></span>`}
+      <button type="button" class="sheet-close" id="closeDetailBtn" aria-label="Cerrar detalle" style="position:static;"><span class="x-mark" aria-hidden="true">&times;</span></button>
+    </div>
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="detail-hero">
       <img class="detail-img" src="${escapeHtml(ev.img || defaultImgFor(ev.category))}" alt="${escapeHtml(ev.title)}" onerror="this.src='${defaultImgFor(ev.category)}'">
@@ -2407,11 +2393,20 @@ function openDetail(id){
     </div>
   `;
 
+  if(backFn) els.detailOverlay.classList.add('on-top'); else els.detailOverlay.classList.remove('on-top');
   openSheet(els.detailOverlay);
   const url = new URL(window.location.href);
   url.searchParams.set('evento', id);
   window.history.pushState({eventoId:id}, '', url);
-  document.getElementById('closeDetailBtn').addEventListener('click', () => closeSheet(els.detailOverlay));
+  document.getElementById('closeDetailBtn').addEventListener('click', () => {
+    els.detailOverlay.classList.remove('on-top');
+    closeSheet(els.detailOverlay);
+  });
+  document.getElementById('backDetailBtn')?.addEventListener('click', () => {
+    els.detailOverlay.classList.remove('on-top');
+    closeSheet(els.detailOverlay);
+    backFn();
+  });
   document.getElementById('interestBtn').addEventListener('click', () => toggleInterest(id));
   document.getElementById('goingBtn').addEventListener('click', () => toggleGoing(id));
   document.getElementById('routeBtn').addEventListener('click', () => openRoute(ev));
