@@ -4858,7 +4858,9 @@ async function init(){
   await fetchEvents();
   await fetchVenueProfiles();
   render();
-  if(!localStorage.getItem(OB_KEY)){
+  const { data: sessionCheck } = await supabaseClient.auth.getSession();
+  const hasSession = !!sessionCheck?.session?.user;
+  if(!localStorage.getItem(OB_KEY) && !hasSession){
     showOnboardingIfNeeded();
   } else if(!state.userLocation && !isPasswordRecoveryLink){
     window.setTimeout(requestLocation, 400);
