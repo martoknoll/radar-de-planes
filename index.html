@@ -1462,6 +1462,7 @@
     #onboardingOverlay.ob-hidden{
       opacity:0;transform:scale(.97);pointer-events:none;
     }
+    .ob-card{flex:1;display:flex;flex-direction:column;width:100%;}
     .ob-slider{flex:1;overflow:hidden;position:relative;}
     .ob-track{
       display:flex;width:300%;height:100%;
@@ -1472,6 +1473,33 @@
       display:flex;flex-direction:column;
       align-items:center;padding:0 32px 48px;
       position:relative;overflow:hidden;
+    }
+    /* ── Desktop layout ── */
+    @media(min-width:640px){
+      #onboardingOverlay{
+        background:rgba(4,6,10,.85);
+        backdrop-filter:blur(8px);
+        align-items:center;
+        justify-content:center;
+      }
+      .ob-card{
+        width:460px;
+        height:600px;
+        background:var(--bg);
+        border-radius:28px;
+        border:1px solid var(--border-strong);
+        box-shadow:0 32px 80px rgba(0,0,0,.7);
+        overflow:hidden;
+        display:flex;
+        flex-direction:column;
+        flex:none;
+      }
+      .ob-slide{padding:0 40px 44px;}
+      .ob-logo-wrap{width:108px;height:108px;}
+      .ob-logo-ring:nth-child(2){inset:-18px;}
+      .ob-logo-ring:nth-child(3){inset:-36px;}
+      .ob-brand{font-size:40px;}
+      .ob-map{height:190px;}
     }
     /* ambient glow slide 1 */
     .ob-slide-1::before{
@@ -1765,6 +1793,7 @@
 
   <!-- Onboarding (first visit) -->
   <div id="onboardingOverlay" aria-hidden="true">
+    <div class="ob-card">
     <div class="ob-slider">
       <div class="ob-track" id="obTrack">
 
@@ -1866,8 +1895,9 @@
         </div>
 
       </div>
-    </div>
-  </div>
+    </div><!-- /ob-slider -->
+    </div><!-- /ob-card -->
+  </div><!-- /onboardingOverlay -->
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
