@@ -1447,6 +1447,10 @@
     .historial-summary::-webkit-details-marker{display:none;}
     .historial-summary .chevron-icon{margin-left:auto;font-size:16px;color:var(--muted);transition:transform .2s;}
     details[open] .chevron-icon{transform:rotate(180deg);}
+
+    /* Hide FAB and Leaflet attribution when a page is active */
+    .page-active .fab{display:none !important;}
+    .page-active .leaflet-control-container{display:none !important;}
   </style>
 </head>
 <body>
@@ -3007,6 +3011,7 @@ function handleRoute(){
     formMap.remove();
     formMap = null;
   }
+  document.getElementById('app').classList.toggle('page-active', !!hash);
   if(!hash){
     pv.classList.remove('active');
     pv.setAttribute('aria-hidden','true');
