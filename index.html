@@ -1393,7 +1393,7 @@
     }
     .page-back-btn{
       width:36px;height:36px;border-radius:10px;
-      background:transparent;border:1px solid var(--border);
+      background:rgba(255,255,255,.07);border:1px solid var(--border);
       color:var(--text);display:grid;place-items:center;
       font-size:18px;cursor:pointer;flex:none;
     }
@@ -3110,7 +3110,7 @@ function renderLoginPage(){
   const pv = document.getElementById('pageView');
   pv.innerHTML = `
     <div class="page-header">
-      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver"><i class="ti ti-arrow-left"></i></button>
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver">←</button>
       <h1 class="page-title">Mi cuenta</h1>
     </div>
     <div class="page-body">
@@ -3210,7 +3210,7 @@ async function renderProfilePage(){
 
   pv.innerHTML = `
     <div class="page-header">
-      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver"><i class="ti ti-arrow-left"></i></button>
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver">←</button>
       <h1 class="page-title">Mi perfil</h1>
     </div>
     <div class="page-body">
@@ -3299,7 +3299,7 @@ async function renderEditProfilePage(){
 
   pv.innerHTML = `
     <div class="page-header">
-      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver"><i class="ti ti-arrow-left"></i></button>
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver">←</button>
       <h1 class="page-title">Editar perfil</h1>
     </div>
     <div class="page-body">
@@ -3449,7 +3449,7 @@ function renderMyPlansPage(){
 
   pv.innerHTML = `
     <div class="page-header">
-      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver"><i class="ti ti-arrow-left"></i></button>
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver">←</button>
       <h1 class="page-title">Mis planes</h1>
     </div>
     <div class="page-body">
@@ -3481,7 +3481,7 @@ async function renderMyEventsPage(){
   const pv = document.getElementById('pageView');
   pv.innerHTML = `
     <div class="page-header">
-      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver"><i class="ti ti-arrow-left"></i></button>
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver">←</button>
       <h1 class="page-title">Mis eventos</h1>
     </div>
     <div class="page-body">
