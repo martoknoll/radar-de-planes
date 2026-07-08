@@ -1451,6 +1451,166 @@
     /* Hide FAB and Leaflet attribution when a page is active */
     .page-active .fab{display:none !important;}
     .page-active .leaflet-control-container{display:none !important;}
+
+    /* ── Onboarding overlay ── */
+    #onboardingOverlay{
+      position:fixed;inset:0;z-index:9999;
+      background:var(--bg);
+      display:flex;flex-direction:column;
+      transition:opacity .4s ease, transform .4s ease;
+    }
+    #onboardingOverlay.ob-hidden{
+      opacity:0;transform:scale(.97);pointer-events:none;
+    }
+    .ob-slider{flex:1;overflow:hidden;position:relative;}
+    .ob-track{
+      display:flex;width:300%;height:100%;
+      transition:transform .45s cubic-bezier(.65,0,.35,1);
+    }
+    .ob-slide{
+      width:calc(100% / 3);height:100%;
+      display:flex;flex-direction:column;
+      align-items:center;padding:0 32px 48px;
+      position:relative;overflow:hidden;
+    }
+    /* ambient glow slide 1 */
+    .ob-slide-1::before{
+      content:'';position:absolute;inset:0;pointer-events:none;
+      background:
+        radial-gradient(ellipse 55% 40% at 50% 44%, rgba(0,245,212,.08) 0%, transparent 70%),
+        radial-gradient(ellipse 30% 20% at 12% 88%, rgba(0,245,212,.04) 0%, transparent 60%);
+    }
+    .ob-center{
+      flex:1;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      width:100%;
+    }
+    /* logo */
+    .ob-logo-wrap{position:relative;width:96px;height:96px;margin-bottom:28px;}
+    .ob-logo-ring{
+      position:absolute;inset:0;border-radius:50%;
+      border:1.5px solid rgba(0,245,212,.20);
+      animation:ob-ring 3s ease-in-out infinite;
+    }
+    .ob-logo-ring:nth-child(2){inset:-15px;border-color:rgba(0,245,212,.09);animation-delay:.6s;}
+    .ob-logo-ring:nth-child(3){inset:-30px;border-color:rgba(0,245,212,.04);animation-delay:1.2s;}
+    @keyframes ob-ring{
+      0%,100%{transform:scale(1);opacity:1;}
+      50%{transform:scale(1.04);opacity:.6;}
+    }
+    .ob-logo-img{
+      position:absolute;inset:0;border-radius:50%;overflow:hidden;
+      border:1.5px solid rgba(0,245,212,.25);
+    }
+    .ob-logo-img img{width:100%;height:100%;object-fit:cover;}
+    /* text */
+    .ob-brand{font-size:36px;font-weight:700;letter-spacing:-.5px;color:var(--text);margin-bottom:12px;}
+    .ob-brand span{color:var(--primary);}
+    .ob-tagline{font-size:15px;line-height:1.6;color:var(--muted);text-align:center;max-width:240px;}
+    .ob-tagline strong{color:var(--text);font-weight:500;}
+    /* eyebrow */
+    .ob-eyebrow{
+      font-size:11px;font-weight:600;letter-spacing:.12em;
+      text-transform:uppercase;color:var(--primary);margin-bottom:10px;
+    }
+    .ob-heading{
+      font-size:23px;font-weight:700;letter-spacing:-.3px;
+      color:var(--text);line-height:1.25;text-align:center;margin-bottom:8px;
+    }
+    .ob-sub{
+      font-size:14px;color:var(--muted);text-align:center;
+      line-height:1.5;margin-bottom:26px;max-width:230px;
+    }
+    /* categories grid */
+    .ob-grid{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;
+    }
+    .ob-cat{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:16px;padding:13px 8px 10px;
+      display:flex;flex-direction:column;align-items:center;gap:6px;
+    }
+    .ob-cat.hi{
+      background:rgba(0,245,212,.08);
+      border-color:rgba(0,245,212,.3);
+    }
+    .ob-cat-icon{font-size:22px;line-height:1;}
+    .ob-cat-label{font-size:11px;font-weight:500;color:var(--muted);}
+    .ob-cat.hi .ob-cat-label{color:var(--primary);}
+    /* map illustration */
+    .ob-map{
+      width:100%;height:180px;border-radius:20px;
+      background:var(--surface);border:1px solid var(--border);
+      margin-bottom:22px;position:relative;overflow:hidden;flex-shrink:0;
+    }
+    .ob-map-gh,.ob-map-gv{position:absolute;background:var(--border);}
+    .ob-map-gh{left:0;right:0;height:1px;}
+    .ob-map-gv{top:0;bottom:0;width:1px;}
+    .ob-mdot{
+      position:absolute;width:6px;height:6px;border-radius:50%;
+      background:var(--primary);opacity:.4;
+    }
+    .ob-mdot.active{
+      width:10px;height:10px;opacity:1;
+      box-shadow:0 0 10px var(--primary),0 0 22px rgba(0,245,212,.25);
+      animation:ob-dpulse 2.5s ease-in-out infinite;
+    }
+    @keyframes ob-dpulse{0%,100%{transform:scale(1);}50%{transform:scale(1.3);}}
+    .ob-pin{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+    .ob-pin-outer{
+      width:46px;height:46px;border-radius:50%;
+      background:rgba(0,245,212,.10);border:1.5px solid rgba(0,245,212,.35);
+      display:flex;align-items:center;justify-content:center;
+      animation:ob-breathe 3s ease-in-out infinite;
+    }
+    @keyframes ob-breathe{
+      0%,100%{box-shadow:0 0 0 0 rgba(0,245,212,.22);}
+      50%{box-shadow:0 0 0 13px transparent;}
+    }
+    .ob-pin-inner{width:13px;height:13px;border-radius:50%;background:var(--primary);}
+    /* perm badge */
+    .ob-badge{
+      display:inline-flex;align-items:center;gap:6px;
+      background:var(--surface-2);border:1px solid var(--border);
+      border-radius:20px;padding:5px 12px 5px 8px;
+      font-size:12px;color:var(--muted);margin-bottom:22px;
+    }
+    .ob-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--primary);}
+    /* footer */
+    .ob-footer{
+      width:100%;display:flex;flex-direction:column;
+      align-items:center;gap:10px;flex-shrink:0;
+    }
+    .ob-dots{display:flex;gap:6px;align-items:center;margin-bottom:4px;}
+    .ob-dot{
+      width:6px;height:6px;border-radius:3px;
+      background:var(--border);
+      transition:width .3s,background .3s;
+    }
+    .ob-dot.active{width:20px;background:var(--primary);}
+    .ob-btn-primary{
+      width:100%;height:52px;border-radius:14px;
+      background:var(--primary);color:var(--ink);
+      font-size:15px;font-weight:700;border:none;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      font-family:inherit;transition:opacity .15s;
+    }
+    .ob-btn-primary:active{opacity:.85;}
+    .ob-btn-ghost{
+      width:100%;height:46px;border-radius:14px;
+      background:transparent;color:var(--muted);
+      font-size:14px;font-weight:500;border:none;cursor:pointer;
+      font-family:inherit;transition:color .15s;
+    }
+    .ob-btn-ghost:hover{color:var(--text);}
+    .ob-skip{
+      position:absolute;top:14px;right:18px;
+      font-size:13px;color:var(--muted);
+      background:none;border:none;cursor:pointer;
+      padding:8px 4px;font-family:inherit;
+      transition:color .15s;z-index:10;
+    }
+    .ob-skip:hover{color:var(--text);}
   </style>
 </head>
 <body>
@@ -1601,6 +1761,112 @@
         <button type="button" class="chip alt" id="skipLocationBtn" style="width:100%; justify-content:center; margin-top:8px;">Ahora no</button>
       </div>
     </article>
+  </div>
+
+  <!-- Onboarding (first visit) -->
+  <div id="onboardingOverlay" aria-hidden="true">
+    <div class="ob-slider">
+      <div class="ob-track" id="obTrack">
+
+        <!-- Slide 1: Bienvenida -->
+        <div class="ob-slide ob-slide-1">
+          <button class="ob-skip" onclick="skipOnboarding()">Saltar</button>
+          <div class="ob-center">
+            <div class="ob-logo-wrap">
+              <div class="ob-logo-ring"></div>
+              <div class="ob-logo-ring"></div>
+              <div class="ob-logo-ring"></div>
+              <div class="ob-logo-img">
+                <img src="https://fxywhalfwhhqzggayswc.supabase.co/storage/v1/object/public/avatars/file_00000000744c720eba4f161649d25936.png" alt="Sonda">
+              </div>
+            </div>
+            <div class="ob-brand">Son<span>da</span></div>
+            <p class="ob-tagline">Descubrí lo que pasa<br><strong>esta semana en Buenos Aires</strong></p>
+          </div>
+          <div class="ob-footer">
+            <div class="ob-dots">
+              <div class="ob-dot active" data-ob-dot="0"></div>
+              <div class="ob-dot" data-ob-dot="1"></div>
+              <div class="ob-dot" data-ob-dot="2"></div>
+            </div>
+            <button class="ob-btn-primary" onclick="obGoTo(1)">
+              Empezar
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Slide 2: Categorías -->
+        <div class="ob-slide ob-slide-2">
+          <button class="ob-skip" onclick="skipOnboarding()">Saltar</button>
+          <div class="ob-center">
+            <div class="ob-eyebrow">Qué querés hacer</div>
+            <div class="ob-heading">Hay algo para cada momento</div>
+            <p class="ob-sub">Música, teatro, talleres, ferias y mucho más en un solo lugar</p>
+            <div class="ob-grid">
+              <div class="ob-cat hi"><span class="ob-cat-icon">🎵</span><span class="ob-cat-label">Música</span></div>
+              <div class="ob-cat">   <span class="ob-cat-icon">🎭</span><span class="ob-cat-label">Teatro</span></div>
+              <div class="ob-cat">   <span class="ob-cat-icon">🎬</span><span class="ob-cat-label">Cine</span></div>
+              <div class="ob-cat hi"><span class="ob-cat-icon">🎨</span><span class="ob-cat-label">Arte</span></div>
+              <div class="ob-cat">   <span class="ob-cat-icon">🛍️</span><span class="ob-cat-label">Feria</span></div>
+              <div class="ob-cat">   <span class="ob-cat-icon">🏃</span><span class="ob-cat-label">Deporte</span></div>
+              <div class="ob-cat">   <span class="ob-cat-icon">💬</span><span class="ob-cat-label">Charla</span></div>
+              <div class="ob-cat hi"><span class="ob-cat-icon">🍽️</span><span class="ob-cat-label">Gastro</span></div>
+              <div class="ob-cat">   <span class="ob-cat-icon">🧠</span><span class="ob-cat-label">Taller</span></div>
+            </div>
+          </div>
+          <div class="ob-footer">
+            <div class="ob-dots">
+              <div class="ob-dot" data-ob-dot="0"></div>
+              <div class="ob-dot active" data-ob-dot="1"></div>
+              <div class="ob-dot" data-ob-dot="2"></div>
+            </div>
+            <button class="ob-btn-primary" onclick="obGoTo(2)">
+              Siguiente
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Slide 3: Ubicación -->
+        <div class="ob-slide ob-slide-3">
+          <div class="ob-center">
+            <div class="ob-eyebrow">Última configuración</div>
+            <div class="ob-heading">¿Dónde estás?</div>
+            <p class="ob-sub">Te mostramos lo que hay cerca tuyo primero</p>
+            <div class="ob-map">
+              <div class="ob-map-gh" style="top:25%"></div>
+              <div class="ob-map-gh" style="top:50%"></div>
+              <div class="ob-map-gh" style="top:75%"></div>
+              <div class="ob-map-gv" style="left:25%"></div>
+              <div class="ob-map-gv" style="left:50%"></div>
+              <div class="ob-map-gv" style="left:75%"></div>
+              <div class="ob-mdot" style="top:30%;left:22%"></div>
+              <div class="ob-mdot active" style="top:42%;left:38%"></div>
+              <div class="ob-mdot" style="top:26%;left:62%"></div>
+              <div class="ob-mdot active" style="top:66%;left:72%"></div>
+              <div class="ob-mdot" style="top:74%;left:30%"></div>
+              <div class="ob-mdot" style="top:55%;left:83%"></div>
+              <div class="ob-pin"><div class="ob-pin-outer"><div class="ob-pin-inner"></div></div></div>
+            </div>
+            <div class="ob-badge"><div class="ob-badge-dot"></div>Solo mientras usás la app</div>
+          </div>
+          <div class="ob-footer">
+            <div class="ob-dots">
+              <div class="ob-dot" data-ob-dot="0"></div>
+              <div class="ob-dot" data-ob-dot="1"></div>
+              <div class="ob-dot active" data-ob-dot="2"></div>
+            </div>
+            <button class="ob-btn-primary" onclick="onboardingActivateLocation()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5A4.5 4.5 0 0 1 12.5 6c0 3-4.5 8.5-4.5 8.5S3.5 9 3.5 6A4.5 4.5 0 0 1 8 1.5Z" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="6" r="1.5" fill="currentColor"/></svg>
+              Activar ubicación
+            </button>
+            <button class="ob-btn-ghost" onclick="skipOnboarding()">Explorar sin ubicación</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -4513,6 +4779,47 @@ function cacheElements(){
   els.toast = document.getElementById('toast');
 }
 
+/* ── Onboarding ── */
+const OB_KEY = 'sonda.onboarding.v1';
+let obCurrent = 0;
+
+function showOnboardingIfNeeded(){
+  if(localStorage.getItem(OB_KEY)) return;
+  const el = document.getElementById('onboardingOverlay');
+  el.removeAttribute('aria-hidden');
+
+  // swipe support
+  let tx = 0;
+  el.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if(Math.abs(dx) > 40) obGoTo(obCurrent + (dx < 0 ? 1 : -1));
+  });
+}
+
+function obGoTo(n){
+  obCurrent = Math.max(0, Math.min(2, n));
+  document.getElementById('obTrack').style.transform = `translateX(${-obCurrent * (100/3)}%)`;
+  document.querySelectorAll('[data-ob-dot]').forEach(d => {
+    d.classList.toggle('active', Number(d.dataset.obDot) === obCurrent);
+  });
+}
+
+function closeOnboarding(){
+  localStorage.setItem(OB_KEY, '1');
+  const el = document.getElementById('onboardingOverlay');
+  el.classList.add('ob-hidden');
+  el.setAttribute('aria-hidden','true');
+  setTimeout(() => { el.style.display = 'none'; }, 420);
+}
+
+function skipOnboarding(){ closeOnboarding(); }
+
+function onboardingActivateLocation(){
+  closeOnboarding();
+  requestLocation();
+}
+
 async function init(){
   cacheElements();
   state.interactions = loadLocalJson(STORAGE_KEYS.interactions, {});
@@ -4521,7 +4828,11 @@ async function init(){
   await fetchEvents();
   await fetchVenueProfiles();
   render();
-  if(!state.userLocation && !isPasswordRecoveryLink) window.setTimeout(requestLocation, 400);
+  if(!localStorage.getItem(OB_KEY)){
+    showOnboardingIfNeeded();
+  } else if(!state.userLocation && !isPasswordRecoveryLink){
+    window.setTimeout(requestLocation, 400);
+  }
 
   const sharedEventId = new URL(window.location.href).searchParams.get('evento');
   if(sharedEventId && state.events.some(ev => ev.id === sharedEventId)) openDetail(sharedEventId);
