@@ -1473,6 +1473,29 @@
       align-items:center;padding:0 32px 48px;
       position:relative;overflow:hidden;
     }
+    /* ── Desktop layout ── */
+    @media(min-width:640px){
+      #onboardingOverlay{
+        background:rgba(4,6,10,.82);
+        backdrop-filter:blur(6px);
+        align-items:center;justify-content:center;
+      }
+      .ob-slider{
+        flex:none;
+        width:460px;height:600px;
+        background:var(--bg);
+        border-radius:28px;
+        border:1px solid var(--border);
+        box-shadow:0 32px 80px rgba(0,0,0,.6);
+        overflow:hidden;
+      }
+      .ob-slide{padding:0 40px 44px;}
+      .ob-logo-wrap{width:108px;height:108px;}
+      .ob-logo-ring:nth-child(2){inset:-18px;}
+      .ob-logo-ring:nth-child(3){inset:-36px;}
+      .ob-brand{font-size:40px;}
+      .ob-map{height:200px;}
+    }
     /* ambient glow slide 1 */
     .ob-slide-1::before{
       content:'';position:absolute;inset:0;pointer-events:none;
