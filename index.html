@@ -1202,11 +1202,12 @@
     }
     .account-avatar-edit{
       position:absolute; bottom:-2px; right:-2px;
-      width:24px; height:24px; border-radius:50%;
+      width:26px; height:26px; border-radius:50%;
       display:grid; place-items:center;
       background:var(--coral); color:var(--ink);
       border:2px solid var(--bg);
       font-size:13px; cursor:pointer;
+      z-index:2;
     }
     .account-name-row{display:flex; align-items:center; gap:8px; min-width:0;}
     .account-name{font-size:19px; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -3592,7 +3593,8 @@ async function renderEditProfilePage(){
   document.getElementById('pageBackBtn').onclick = () => navigate('perfil');
   document.getElementById('cancelProfileBtn').onclick = () => navigate('perfil');
   document.getElementById('avatarEditBtn').addEventListener('click', () => document.getElementById('avatarInput').click());
-  document.getElementById('avatarInput').addEventListener('change', (e) => uploadAvatar(e.target.files[0]));
+  document.getElementById('avatarPreview').addEventListener('click', () => document.getElementById('avatarInput').click());
+  document.getElementById('avatarInput').addEventListener('change', (e) => { if(e.target.files[0]) uploadAvatar(e.target.files[0]); });
 
   if(isOrganizer){
     const grid = document.getElementById('venuePhotosGrid');
