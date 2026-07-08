@@ -4885,7 +4885,13 @@ async function init(){
   }
   updateAccountBtn();
   handleRoute();
-  /* onboarding y location modal se disparan desde onAuthStateChange */
+  if(!isPasswordRecoveryLink){
+    if(!currentUser && !localStorage.getItem(OB_KEY)){
+      showOnboardingIfNeeded();
+    } else if(!currentUser && !state.userLocation){
+      window.setTimeout(requestLocation, 400);
+    }
+  }
   if(isPasswordRecoveryLink && currentUser){
     passwordRecoveryMode = true;
     navigate('cambiar-contrasena');
@@ -4913,11 +4919,6 @@ async function init(){
       userFollowing = new Set();
       currentUserProfile = null;
       if(location.hash === '#perfil' || location.hash === '#perfil/editar' || location.hash === '#mis-planes' || location.hash === '#mis-eventos') navigate('');
-      if(!localStorage.getItem(OB_KEY) && !isPasswordRecoveryLink){
-        showOnboardingIfNeeded();
-      } else if(!state.userLocation && !isPasswordRecoveryLink){
-        window.setTimeout(requestLocation, 400);
-      }
     }
     updateAccountBtn();
   });
