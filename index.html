@@ -1456,11 +1456,14 @@
     #onboardingOverlay{
       position:fixed;inset:0;z-index:9999;
       background:var(--bg);
-      display:flex;flex-direction:column;
-      transition:opacity .4s ease, transform .4s ease;
+      display:none;flex-direction:column;
+      opacity:0;transition:opacity .35s ease;
     }
-    #onboardingOverlay.ob-hidden{
-      opacity:0;transform:scale(.97);pointer-events:none;
+    #onboardingOverlay.ob-visible{
+      display:flex;
+    }
+    #onboardingOverlay.ob-in{
+      opacity:1;
     }
     .ob-card{flex:1;display:flex;flex-direction:column;width:100%;}
     .ob-slider{flex:1;overflow:hidden;position:relative;}
@@ -1476,7 +1479,7 @@
     }
     /* ── Desktop layout ── */
     @media(min-width:640px){
-      #onboardingOverlay{
+      #onboardingOverlay.ob-visible{
         background:rgba(4,6,10,.85);
         backdrop-filter:blur(8px);
         align-items:center;
@@ -4813,18 +4816,22 @@ function cacheElements(){
 const OB_KEY = 'sonda.onboarding.v1';
 let obCurrent = 0;
 
+let obSwipeBound = false;
+
 function showOnboardingIfNeeded(){
   if(localStorage.getItem(OB_KEY)) return;
   const el = document.getElementById('onboardingOverlay');
-  el.removeAttribute('aria-hidden');
-
-  // swipe support
-  let tx = 0;
-  el.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - tx;
-    if(Math.abs(dx) > 40) obGoTo(obCurrent + (dx < 0 ? 1 : -1));
-  });
+  el.classList.add('ob-visible');
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('ob-in')));
+  if(!obSwipeBound){
+    obSwipeBound = true;
+    let tx = 0;
+    el.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+    el.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - tx;
+      if(Math.abs(dx) > 40) obGoTo(obCurrent + (dx < 0 ? 1 : -1));
+    });
+  }
 }
 
 function obGoTo(n){
@@ -4838,9 +4845,9 @@ function obGoTo(n){
 function closeOnboarding(){
   localStorage.setItem(OB_KEY, '1');
   const el = document.getElementById('onboardingOverlay');
-  el.classList.add('ob-hidden');
-  el.setAttribute('aria-hidden','true');
-  setTimeout(() => { el.style.display = 'none'; }, 420);
+  if(!el.classList.contains('ob-visible')) return;
+  el.classList.remove('ob-in');
+  setTimeout(() => { el.classList.remove('ob-visible'); }, 380);
 }
 
 function skipOnboarding(){ closeOnboarding(); }
