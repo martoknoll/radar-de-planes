@@ -1373,6 +1373,80 @@
     @media (prefers-reduced-motion:reduce){
       *,*::before,*::after{animation-duration:.001ms!important; transition-duration:.001ms!important; scroll-behavior:auto!important;}
     }
+
+    /* ---- Page routing system ---- */
+    #pageView{
+      position:fixed;inset:0;z-index:900;
+      background:var(--bg);
+      overflow-y:auto;-webkit-overflow-scrolling:touch;
+      transform:translateX(100%);
+      transition:transform .28s cubic-bezier(.32,.72,0,1);
+      pointer-events:none;
+    }
+    #pageView.active{transform:translateX(0);pointer-events:auto;}
+    .page-header{
+      position:sticky;top:0;
+      background:var(--bg);
+      border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:12px;
+      padding:14px 16px;z-index:1;min-height:56px;
+    }
+    .page-back-btn{
+      width:36px;height:36px;border-radius:10px;
+      background:transparent;border:1px solid var(--border);
+      color:var(--text);display:grid;place-items:center;
+      font-size:18px;cursor:pointer;flex:none;
+    }
+    .page-title{font-size:17px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .page-body{padding:20px 16px 60px;max-width:600px;margin:0 auto;}
+    .page-section{margin-bottom:24px;}
+    .page-section-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+    .page-divider{height:1px;background:var(--border);margin:20px 0;}
+    .profile-hero{display:flex;align-items:center;gap:16px;margin-bottom:20px;}
+    .profile-avatar-lg{
+      width:80px;height:80px;border-radius:50%;
+      display:grid;place-items:center;font-size:28px;font-weight:700;
+      background:rgba(255,255,255,.08);border:2px solid var(--border);
+      object-fit:cover;flex:none;
+    }
+    .profile-hero-info{flex:1;min-width:0;}
+    .profile-hero-name{font-size:20px;font-weight:800;line-height:1.2;}
+    .profile-hero-username{font-size:13px;color:var(--muted);margin-top:2px;}
+    .profile-hero-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--mint);border:1px solid var(--mint);border-radius:6px;padding:2px 7px;margin-top:5px;}
+    .profile-bio{font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:16px;}
+    .page-edit-btn{
+      display:flex;align-items:center;justify-content:center;gap:6px;
+      padding:10px 14px;border:1px solid var(--border);border-radius:10px;
+      background:transparent;color:var(--text);font-size:14px;font-weight:600;
+      cursor:pointer;width:100%;margin-bottom:4px;
+    }
+    .page-action-btn{
+      display:flex;align-items:center;gap:10px;width:100%;
+      padding:12px 14px;border:1px solid var(--border);border-radius:12px;
+      background:transparent;color:var(--text);font-size:14px;font-weight:600;
+      cursor:pointer;margin-bottom:10px;text-align:left;
+    }
+    .page-action-btn i{font-size:18px;color:var(--muted);}
+    .page-action-btn.danger{color:#ef4444;border-color:rgba(239,68,68,.3);}
+    .page-action-btn.danger i{color:#ef4444;}
+    .page-see-all{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--mint);background:none;border:none;cursor:pointer;padding:4px 0;margin-top:4px;}
+    .following-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+    .following-item:last-child{border-bottom:none;}
+    .following-avatar{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none;object-fit:cover;}
+    .following-name{flex:1;font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+    .pref-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+    .pref-item-pg{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;}
+    .pref-item-pg input{margin-left:auto;}
+    .page-empty{color:var(--muted);font-size:14px;padding:12px 0;}
+    .historial-summary{
+      display:flex;align-items:center;gap:8px;
+      font-size:14px;font-weight:600;color:var(--text);
+      background:none;border:none;cursor:pointer;list-style:none;
+      padding:12px 0;width:100%;
+    }
+    .historial-summary::-webkit-details-marker{display:none;}
+    .historial-summary .chevron-icon{margin-left:auto;font-size:16px;color:var(--muted);transition:transform .2s;}
+    details[open] .chevron-icon{transform:rotate(180deg);}
   </style>
 </head>
 <body>
@@ -1506,6 +1580,8 @@
   <div class="sheet-overlay" id="organizerOverlay" aria-hidden="true">
     <article class="sheet" id="organizerSheet" role="dialog" aria-modal="true" aria-labelledby="organizerTitle"></article>
   </div>
+
+  <div id="pageView" aria-hidden="true"></div>
 
   <div class="sheet-overlay" id="venueOverlay" aria-hidden="true">
     <article class="sheet" id="venueSheet" role="dialog" aria-modal="true" aria-labelledby="venueTitle"></article>
@@ -2525,7 +2601,7 @@ function closeSheet(overlay){
   }
   if(overlay === els.formOverlay && reopenMyEventsAfterForm){
     reopenMyEventsAfterForm = false;
-    openMyEventsSheet();
+    renderMyEventsPage();
   }
   if(overlay === els.detailOverlay && new URL(window.location.href).searchParams.has('evento')){
     const url = new URL(window.location.href);
@@ -2537,7 +2613,7 @@ function closeSheet(overlay){
 function handleAddEventClick(){
   if(!currentUser){
     showToast('Ingresá con tu cuenta para publicar un plan');
-    openAccountSheet();
+    navigate('login');
     return;
   }
   if(!hasRole('organizer','admin')){
@@ -2923,7 +2999,7 @@ async function uploadAvatar(file){
   const avatarUrl = `${data.publicUrl}?t=${Date.now()}`;
   await supabaseClient.from('profiles').update({ avatar_url: avatarUrl }).eq('id', currentUser.id);
   currentUserProfile.avatar_url = avatarUrl;
-  renderAccountSheet();
+  renderEditProfilePage();
   showToast('Foto de perfil actualizada');
 }
 
@@ -2996,14 +3072,491 @@ function updateAccountBtn(){
   }
 }
 
+/* ---- Page router ---- */
+
+function navigate(route){
+  location.hash = route ? '#' + route : '';
+}
+
+function handleRoute(){
+  const hash = location.hash.replace(/^#/, '');
+  const pv = document.getElementById('pageView');
+  if(!hash){
+    pv.classList.remove('active');
+    pv.setAttribute('aria-hidden','true');
+    return;
+  }
+  const routes = {
+    'login':              renderLoginPage,
+    'perfil':             renderProfilePage,
+    'perfil/editar':      renderEditProfilePage,
+    'mis-planes':         renderMyPlansPage,
+    'mis-eventos':        renderMyEventsPage,
+    'cambiar-contrasena': renderChangePasswordPage,
+  };
+  const fn = routes[hash];
+  if(!fn){ navigate(''); return; }
+  pv.classList.add('active');
+  pv.setAttribute('aria-hidden','false');
+  fn();
+}
+
+window.addEventListener('hashchange', handleRoute);
+
+/* ---- Page: Login ---- */
+
+function renderLoginPage(){
+  if(currentUser){ navigate('perfil'); return; }
+  const pv = document.getElementById('pageView');
+  pv.innerHTML = `
+    <div class="page-header">
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver"><i class="ti ti-arrow-left"></i></button>
+      <h1 class="page-title">Mi cuenta</h1>
+    </div>
+    <div class="page-body">
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px;">Creá tu cuenta o ingresá para guardar tus preferencias de planes.</p>
+      <div class="auth-mode-toggle" id="authModeToggle">
+        <button type="button" class="active" data-mode="login" aria-pressed="true">Ingresar</button>
+        <button type="button" data-mode="signup" aria-pressed="false">Crear cuenta</button>
+      </div>
+      <form id="authForm">
+        <div class="field-row" id="signupNameRow" style="display:none;">
+          <div class="field"><label for="authFirstName">Nombre</label><input type="text" id="authFirstName" maxlength="40" placeholder="Tu nombre"></div>
+          <div class="field"><label for="authLastName">Apellido</label><input type="text" id="authLastName" maxlength="40" placeholder="Tu apellido"></div>
+        </div>
+        <div class="field" id="signupUsernameField" style="display:none;">
+          <label for="authUsername">Nombre de usuario</label>
+          <input type="text" id="authUsername" maxlength="24" pattern="[a-zA-Z0-9_]+" placeholder="sin espacios, ej: juanperez">
+        </div>
+        <div class="field">
+          <label for="authEmail">Email</label>
+          <input type="email" id="authEmail" placeholder="tu@email.com" required>
+        </div>
+        <div class="field">
+          <label for="authPassword">Contraseña</label>
+          <input type="password" id="authPassword" placeholder="Mínimo 6 caracteres" minlength="6" required>
+        </div>
+        <button type="submit" class="submit-btn" id="authSubmitBtn">Ingresar</button>
+        <button type="button" class="forgot-password-link" id="forgotPasswordBtn">¿Olvidaste tu contraseña?</button>
+        <p class="form-note" id="authStatus">Una vez que ingreses, no vas a tener que volver a loguearte en este navegador.</p>
+      </form>
+    </div>
+  `;
+  document.getElementById('pageBackBtn').onclick = () => navigate('');
+  let authMode = 'login';
+  const submitBtn = document.getElementById('authSubmitBtn');
+  const forgotBtn = document.getElementById('forgotPasswordBtn');
+  const nameRow = document.getElementById('signupNameRow');
+  const usernameField = document.getElementById('signupUsernameField');
+  document.querySelectorAll('#authModeToggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      authMode = btn.dataset.mode;
+      document.querySelectorAll('#authModeToggle button').forEach(b => {
+        const active = b.dataset.mode === authMode;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-pressed', active);
+      });
+      const isSignup = authMode === 'signup';
+      submitBtn.textContent = isSignup ? 'Crear cuenta' : 'Ingresar';
+      forgotBtn.style.display = isSignup ? 'none' : 'block';
+      nameRow.style.display = isSignup ? 'grid' : 'none';
+      usernameField.style.display = isSignup ? 'block' : 'none';
+      document.getElementById('authFirstName').required = isSignup;
+      document.getElementById('authLastName').required = isSignup;
+      document.getElementById('authUsername').required = isSignup;
+      document.getElementById('authStatus').textContent = 'Una vez que ingreses, no vas a tener que volver a loguearte en este navegador.';
+    });
+  });
+  document.getElementById('authForm').addEventListener('submit', (e) => handleAuthSubmit(e, () => authMode));
+  forgotBtn.addEventListener('click', handleForgotPassword);
+}
+
+/* ---- Page: Profile ---- */
+
+async function renderProfilePage(){
+  if(!currentUser){ navigate('login'); return; }
+  const pv = document.getElementById('pageView');
+  const displayName = currentUserProfile?.first_name || currentUserProfile?.display_name || 'Usuario';
+  const username = currentUserProfile?.username;
+  const avatarUrl = currentUserProfile?.avatar_url;
+  const initials = String(displayName).slice(0,2).toUpperCase();
+  const isOrganizer = hasRole('organizer','admin');
+  const upcoming = getMyPlans();
+  const previewPlans = upcoming.slice(0,3);
+
+  let followingHtml = '<p class="page-empty">No seguís a ningún organizador todavía.</p>';
+  if(userFollowing.size){
+    const { data: fp } = await supabaseClient.from('profiles').select('id, display_name, username, avatar_url').in('id',[...userFollowing]);
+    followingHtml = (fp||[]).map(p => {
+      const name = p.display_name || (p.username ? '@'+p.username : p.id);
+      const ini = String(name).slice(0,2).toUpperCase();
+      return `<div class="following-item">
+        ${p.avatar_url ? `<img class="following-avatar" src="${escapeHtml(p.avatar_url)}" alt="">` : `<div class="following-avatar">${escapeHtml(ini)}</div>`}
+        <span class="following-name" data-open-organizer="${p.id}">${escapeHtml(name)}</span>
+        <button type="button" class="secondary-btn" style="padding:5px 10px;font-size:12px;" data-unfollow-btn="${p.id}">Dejar de seguir</button>
+      </div>`;
+    }).join('');
+  }
+
+  const prefItems = CATEGORIES.map(c => `
+    <label class="pref-item-pg">
+      <i class="ti ${c.icon}"></i><span>${c.label}</span>
+      <input type="checkbox" data-category="${c.id}" ${userPreferences.has(c.id) ? 'checked' : ''}>
+    </label>`).join('');
+
+  const plansHtml = previewPlans.length
+    ? `<div class="cards">${previewPlans.map(ev => eventCardHtml(ev)).join('')}</div>`
+    : '<p class="page-empty">No tenés planes próximos guardados.</p>';
+
+  pv.innerHTML = `
+    <div class="page-header">
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver"><i class="ti ti-arrow-left"></i></button>
+      <h1 class="page-title">Mi perfil</h1>
+    </div>
+    <div class="page-body">
+      <div class="profile-hero">
+        <div style="position:relative;flex:none;">
+          ${avatarUrl ? `<img class="profile-avatar-lg" src="${escapeHtml(avatarUrl)}" alt="Foto de perfil">` : `<div class="profile-avatar-lg">${escapeHtml(initials)}</div>`}
+        </div>
+        <div class="profile-hero-info">
+          <div class="profile-hero-name">${escapeHtml(displayName)}</div>
+          ${username ? `<div class="profile-hero-username">@${escapeHtml(username)}</div>` : ''}
+          ${currentUserProfile?.verified ? `<div class="profile-hero-badge"><i class="ti ti-rosette-discount-check"></i> Verificado</div>` : ''}
+        </div>
+      </div>
+      ${currentUserProfile?.bio ? `<p class="profile-bio">${escapeHtml(currentUserProfile.bio)}</p>` : ''}
+      ${socialLinksHtml(currentUserProfile)}
+      <button type="button" class="page-edit-btn" id="editProfilePageBtn"><i class="ti ti-pencil"></i> Editar perfil</button>
+
+      <div class="page-divider"></div>
+
+      <div class="page-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="page-section-title" style="margin-bottom:0;">Mis planes (${upcoming.length})</div>
+          ${upcoming.length > 0 ? `<button type="button" class="page-see-all" id="seeAllPlansBtn">Ver todos <i class="ti ti-arrow-right" style="font-size:12px;"></i></button>` : ''}
+        </div>
+        <div id="profilePlansPreview">${plansHtml}</div>
+      </div>
+
+      <div class="page-divider"></div>
+
+      <div class="page-section">
+        <div class="page-section-title">Organizadores que seguís</div>
+        <div id="profileFollowing">${followingHtml}</div>
+      </div>
+
+      <div class="page-divider"></div>
+
+      <div class="page-section">
+        <div class="page-section-title">Preferencias de contenido</div>
+        <div class="pref-grid">${prefItems}</div>
+      </div>
+
+      <div class="page-divider"></div>
+
+      ${isOrganizer ? `<button type="button" class="page-action-btn" id="myEventsPgBtn"><i class="ti ti-calendar-event"></i> Mis eventos creados</button>` : ''}
+      ${hasRole('admin') ? `<button type="button" class="page-action-btn" id="adminPgBtn"><i class="ti ti-shield-lock"></i> Panel de administración</button>` : ''}
+      <button type="button" class="page-action-btn danger" id="logoutPgBtn"><i class="ti ti-logout"></i> Cerrar sesión</button>
+    </div>
+  `;
+
+  document.getElementById('pageBackBtn').onclick = () => navigate('');
+  document.getElementById('editProfilePageBtn').onclick = () => navigate('perfil/editar');
+  document.getElementById('seeAllPlansBtn')?.addEventListener('click', () => navigate('mis-planes'));
+  document.getElementById('myEventsPgBtn')?.addEventListener('click', () => navigate('mis-eventos'));
+  document.getElementById('adminPgBtn')?.addEventListener('click', () => { navigate(''); setTimeout(openAdminSheet, 300); });
+  document.getElementById('logoutPgBtn').addEventListener('click', async () => {
+    await supabaseClient.auth.signOut();
+    navigate('');
+  });
+  pv.querySelectorAll('#profilePlansPreview [data-card-id]').forEach(card => {
+    card.addEventListener('click', () => openDetail(card.dataset.cardId));
+  });
+  pv.querySelectorAll('.pref-item-pg input').forEach(input => {
+    input.addEventListener('change', () => togglePreference(input.dataset.category, input.checked));
+  });
+  pv.querySelectorAll('[data-open-organizer]').forEach(item => {
+    item.addEventListener('click', () => openOrganizerSheet(item.dataset.openOrganizer));
+  });
+  pv.querySelectorAll('[data-unfollow-btn]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await toggleFollow(btn.dataset.unfollowBtn);
+      renderProfilePage();
+    });
+  });
+}
+
+/* ---- Page: Edit Profile ---- */
+
+async function renderEditProfilePage(){
+  if(!currentUser){ navigate('login'); return; }
+  const pv = document.getElementById('pageView');
+  const avatarUrl = currentUserProfile?.avatar_url;
+  const displayName = currentUserProfile?.first_name || currentUserProfile?.display_name || '';
+  const initials = String(displayName||'U').slice(0,2).toUpperCase();
+  const isOrganizer = hasRole('organizer','admin');
+
+  pv.innerHTML = `
+    <div class="page-header">
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver"><i class="ti ti-arrow-left"></i></button>
+      <h1 class="page-title">Editar perfil</h1>
+    </div>
+    <div class="page-body">
+      <div style="display:flex;justify-content:center;margin-bottom:24px;">
+        <div class="account-avatar-wrap">
+          ${avatarUrl ? `<img class="account-avatar" id="avatarPreview" src="${escapeHtml(avatarUrl)}" alt="Foto de perfil">` : `<div class="account-avatar" id="avatarPreview">${escapeHtml(initials)}</div>`}
+          <button type="button" class="account-avatar-edit" id="avatarEditBtn" aria-label="Cambiar foto"><i class="ti ti-camera"></i></button>
+          <input type="file" id="avatarInput" accept="image/*" hidden>
+        </div>
+      </div>
+
+      <div class="page-section-title">Datos personales</div>
+      <div class="field-row">
+        <div class="field"><label for="editFirstName">Nombre</label><input type="text" id="editFirstName" maxlength="40" value="${escapeHtml(currentUserProfile?.first_name||'')}"></div>
+        <div class="field"><label for="editLastName">Apellido</label><input type="text" id="editLastName" maxlength="40" value="${escapeHtml(currentUserProfile?.last_name||'')}"></div>
+      </div>
+      <div class="field">
+        <label for="editUsername">Nombre de usuario</label>
+        <input type="text" id="editUsername" maxlength="24" pattern="[a-zA-Z0-9_]+" value="${escapeHtml(currentUserProfile?.username||'')}">
+      </div>
+      <div class="field">
+        <label for="editBio">Descripción</label>
+        <textarea id="editBio" maxlength="280" rows="3" placeholder="Contales a los demás quién sos">${escapeHtml(currentUserProfile?.bio||'')}</textarea>
+      </div>
+
+      <div class="page-divider"></div>
+      <div class="page-section-title">Redes sociales</div>
+      <div class="field"><label for="editInstagram">Instagram</label><input type="text" id="editInstagram" maxlength="60" placeholder="usuario (sin @)" value="${escapeHtml(currentUserProfile?.instagram||'')}"></div>
+      <div class="field"><label for="editFacebook">Facebook</label><input type="text" id="editFacebook" maxlength="60" placeholder="usuario o página (sin @)" value="${escapeHtml(currentUserProfile?.facebook||'')}"></div>
+      <div class="field"><label for="editTwitter">X / Twitter</label><input type="text" id="editTwitter" maxlength="60" placeholder="usuario (sin @)" value="${escapeHtml(currentUserProfile?.twitter||'')}"></div>
+      <div class="field"><label for="editWebsite">Sitio web</label><input type="text" id="editWebsite" maxlength="200" placeholder="www.tusitio.com" value="${escapeHtml(currentUserProfile?.website||'')}"></div>
+
+      ${isOrganizer ? `
+      <div class="page-divider"></div>
+      <div class="page-section-title">Espacio</div>
+      <div class="field">
+        <label for="editVenueType">Tipo de espacio</label>
+        <select id="editVenueType">
+          <option value="">— Elegí un tipo —</option>
+          ${VENUE_TYPES.map(t => `<option value="${t.id}" ${currentUserProfile?.venue_type===t.id?'selected':''}>${t.emoji} ${t.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label for="editVenueAddress">Dirección</label>
+        <input type="text" id="editVenueAddress" maxlength="200" placeholder="Ej: Av. Corrientes 1234, CABA" value="${escapeHtml(currentUserProfile?.venue_address||'')}">
+      </div>
+      <div class="page-section-title" style="margin-top:16px;">Fotos del espacio</div>
+      <div class="venue-photos-edit-grid" id="venuePhotosGrid"><div style="padding:8px;color:var(--muted);font-size:12px;">Cargando fotos...</div></div>
+      ` : ''}
+
+      <p class="form-note" id="editProfileStatus"></p>
+      <div style="display:flex;gap:8px;margin-top:20px;">
+        <button type="button" class="primary-btn" id="saveProfileBtn" style="flex:1;">Guardar</button>
+        <button type="button" class="secondary-btn" id="cancelProfileBtn" style="flex:1;">Cancelar</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('pageBackBtn').onclick = () => navigate('perfil');
+  document.getElementById('cancelProfileBtn').onclick = () => navigate('perfil');
+  document.getElementById('avatarEditBtn').addEventListener('click', () => document.getElementById('avatarInput').click());
+  document.getElementById('avatarInput').addEventListener('change', (e) => uploadAvatar(e.target.files[0]));
+
+  if(isOrganizer){
+    const grid = document.getElementById('venuePhotosGrid');
+    if(grid) populateVenuePhotosGrid(grid);
+  }
+
+  document.getElementById('saveProfileBtn').addEventListener('click', async () => {
+    const status = document.getElementById('editProfileStatus');
+    status.textContent = 'Guardando...';
+    const firstName = document.getElementById('editFirstName').value.trim();
+    const lastName = document.getElementById('editLastName').value.trim();
+    const username = document.getElementById('editUsername').value.trim();
+    const bio = document.getElementById('editBio').value.trim();
+    const instagram = document.getElementById('editInstagram').value.trim();
+    const twitter = document.getElementById('editTwitter').value.trim();
+    const website = document.getElementById('editWebsite').value.trim();
+    const facebook = document.getElementById('editFacebook').value.trim();
+    const venueAddress = isOrganizer ? document.getElementById('editVenueAddress').value.trim() : undefined;
+    const venueType = isOrganizer ? document.getElementById('editVenueType').value : undefined;
+    const { error } = await updateProfile(firstName, lastName, username, bio, instagram, twitter, website, facebook, venueAddress, venueType);
+    if(error){
+      status.textContent = error;
+    } else {
+      updateAccountBtn();
+      await fetchVenueProfiles();
+      renderMap(getFilteredEvents());
+      navigate('perfil');
+      showToast('Perfil actualizado');
+    }
+  });
+}
+
+function populateVenuePhotosGrid(grid){
+  fetchVenuePhotos(currentUser.id).then(photos => {
+    const thumbsHtml = photos.map(p => `
+      <div class="venue-photo-thumb">
+        <img src="${escapeHtml(p.photo_url)}" alt="" loading="lazy">
+        <button type="button" class="venue-photo-thumb-del" data-del-photo="${escapeHtml(p.id)}" aria-label="Eliminar foto">&times;</button>
+      </div>`).join('');
+    grid.innerHTML = thumbsHtml + `<label class="venue-add-photo-btn" aria-label="Agregar foto"><i class="ti ti-plus"></i><input type="file" accept="image/*" id="venuePhotoInput" hidden></label>`;
+    grid.querySelectorAll('[data-del-photo]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        await deleteVenuePhoto(btn.dataset.delPhoto);
+        btn.closest('.venue-photo-thumb').remove();
+      });
+    });
+    document.getElementById('venuePhotoInput')?.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      showToast('Subiendo foto...');
+      const row = await uploadVenuePhoto(file);
+      if(row){
+        const thumb = document.createElement('div');
+        thumb.className = 'venue-photo-thumb';
+        thumb.innerHTML = `<img src="${escapeHtml(row.photo_url)}" alt="" loading="lazy"><button type="button" class="venue-photo-thumb-del" data-del-photo="${escapeHtml(row.id)}" aria-label="Eliminar foto">&times;</button>`;
+        grid.insertBefore(thumb, grid.lastElementChild);
+        thumb.querySelector('[data-del-photo]').addEventListener('click', async (ev) => {
+          ev.currentTarget.disabled = true;
+          await deleteVenuePhoto(row.id);
+          thumb.remove();
+        });
+        showToast('Foto agregada');
+      }
+      e.target.value = '';
+    });
+  });
+}
+
+/* ---- Page: Mis planes ---- */
+
+function renderMyPlansPage(){
+  if(!currentUser){ navigate('login'); return; }
+  const pv = document.getElementById('pageView');
+  const upcoming = getMyPlans();
+  const past = getMyPlansHistory();
+
+  const upcomingHtml = upcoming.length
+    ? `<div class="cards">${upcoming.map(ev => eventCardHtml(ev)).join('')}</div>`
+    : '<p class="page-empty">No tenés planes próximos guardados.</p>';
+
+  const pastHtml = past.length
+    ? `<div class="cards">${past.map(ev => eventCardHtml(ev)).join('')}</div>`
+    : '<p class="page-empty">Todavía no tenés planes pasados.</p>';
+
+  pv.innerHTML = `
+    <div class="page-header">
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver"><i class="ti ti-arrow-left"></i></button>
+      <h1 class="page-title">Mis planes</h1>
+    </div>
+    <div class="page-body">
+      <div class="page-section">
+        <div class="page-section-title">Próximos · ${upcoming.length}</div>
+        ${upcomingHtml}
+      </div>
+      <details>
+        <summary class="historial-summary">
+          Historial
+          <span style="margin-left:4px;color:var(--muted);font-size:13px;font-weight:400;">${past.length ? past.length + ' planes' : 'ninguno'}</span>
+          <i class="ti ti-chevron-down chevron-icon"></i>
+        </summary>
+        <div style="margin-top:10px;">${pastHtml}</div>
+      </details>
+    </div>
+  `;
+
+  document.getElementById('pageBackBtn').onclick = () => navigate('perfil');
+  pv.querySelectorAll('[data-card-id]').forEach(card => {
+    card.addEventListener('click', () => openDetail(card.dataset.cardId));
+  });
+}
+
+/* ---- Page: Mis eventos ---- */
+
+async function renderMyEventsPage(){
+  if(!currentUser){ navigate('login'); return; }
+  const pv = document.getElementById('pageView');
+  pv.innerHTML = `
+    <div class="page-header">
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver"><i class="ti ti-arrow-left"></i></button>
+      <h1 class="page-title">Mis eventos</h1>
+    </div>
+    <div class="page-body">
+      <div id="myEventsPageList" class="my-plans-section"><p style="color:var(--muted);">Cargando...</p></div>
+    </div>
+  `;
+  document.getElementById('pageBackBtn').onclick = () => navigate('perfil');
+
+  const list = document.getElementById('myEventsPageList');
+  const myEvents = state.events
+    .filter(ev => ev.createdBy === currentUser.id)
+    .sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
+
+  if(!myEvents.length){
+    list.innerHTML = '<p class="page-empty">Todavía no creaste ningún evento.</p>';
+    return;
+  }
+  const counts = await fetchInteractionCounts(myEvents.map(ev => ev.id));
+  list.innerHTML = myEvents.map(ev => {
+    const c = counts[ev.id]||{interested:0,going:0};
+    return `
+      <div class="my-plan-item" data-open-my-event="${ev.id}">
+        <div class="my-plan-info">
+          <div class="my-plan-title">${escapeHtml(ev.title)}</div>
+          <div class="my-plan-meta">${fmtDate(ev.date)} · ${escapeHtml(catInfo(ev.category).label)}</div>
+          <div class="my-plan-meta"><i class="ti ti-star-filled"></i> ${c.interested} interesados · <i class="ti ti-flag"></i> ${c.going} van</div>
+        </div>
+        ${daysUntil(ev.date)>=0 ? `<button type="button" class="secondary-btn admin-event-btn" data-edit-my-event="${ev.id}"><i class="ti ti-edit"></i>Editar</button>` : ''}
+      </div>`;
+  }).join('');
+  list.querySelectorAll('[data-open-my-event]').forEach(item => {
+    item.addEventListener('click', () => openDetail(item.dataset.openMyEvent));
+  });
+  list.querySelectorAll('[data-edit-my-event]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ev = myEvents.find(ev => ev.id === btn.dataset.editMyEvent);
+      if(!ev) return;
+      reopenMyEventsAfterForm = true;
+      openForm(ev);
+    });
+  });
+}
+
+/* ---- Page: Change password ---- */
+
+function renderChangePasswordPage(){
+  const pv = document.getElementById('pageView');
+  pv.innerHTML = `
+    <div class="page-header">
+      <h1 class="page-title">Nueva contraseña</h1>
+    </div>
+    <div class="page-body">
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px;">Definí la contraseña que vas a usar para entrar de ahora en más.</p>
+      <form id="newPasswordForm">
+        <div class="field">
+          <label for="newPassword">Contraseña nueva</label>
+          <input type="password" id="newPassword" placeholder="Mínimo 6 caracteres" minlength="6" required>
+        </div>
+        <button type="submit" class="submit-btn">Guardar contraseña</button>
+        <p class="form-note" id="newPasswordStatus"></p>
+      </form>
+    </div>
+  `;
+  document.getElementById('newPasswordForm').addEventListener('submit', handleSetNewPassword);
+}
+
+/* ---- Legacy account sheet (kept for fallback) ---- */
+
 function openAccountSheet(){
-  renderAccountSheet();
-  openSheet(els.accountOverlay);
+  navigate(currentUser ? 'perfil' : 'login');
 }
 
 function closeAccountSheet(){
-  editingProfile = false;
-  closeSheet(els.accountOverlay);
+  navigate('');
 }
 
 async function renderAccountSheet(){
@@ -3433,7 +3986,7 @@ async function handleSetNewPassword(e){
   }
   passwordRecoveryMode = false;
   showToast('Contraseña actualizada');
-  renderAccountSheet();
+  navigate('perfil');
 }
 
 async function handleForgotPassword(){
@@ -3970,16 +4523,17 @@ async function init(){
     render();
   }
   updateAccountBtn();
+  handleRoute();
   if(isPasswordRecoveryLink && currentUser){
     passwordRecoveryMode = true;
-    openAccountSheet();
+    navigate('cambiar-contrasena');
   }
 
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     currentUser = session?.user || null;
     if(event === 'PASSWORD_RECOVERY'){
       passwordRecoveryMode = true;
-      openAccountSheet();
+      navigate('cambiar-contrasena');
       return;
     }
     if(currentUser){
@@ -3989,15 +4543,14 @@ async function init(){
       await loadFollowing();
       await fetchMyInteractions();
       render();
+      if(location.hash === '#login') navigate('perfil');
     }else{
       userPreferences = new Set();
       userFollowing = new Set();
       currentUserProfile = null;
+      if(location.hash === '#perfil' || location.hash === '#perfil/editar' || location.hash === '#mis-planes' || location.hash === '#mis-eventos') navigate('');
     }
     updateAccountBtn();
-    if(els.accountOverlay.classList.contains('open')){
-      renderAccountSheet();
-    }
   });
 }
 
