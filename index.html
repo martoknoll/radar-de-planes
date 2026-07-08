@@ -4858,14 +4858,6 @@ async function init(){
   await fetchEvents();
   await fetchVenueProfiles();
   render();
-  const { data: sessionCheck } = await supabaseClient.auth.getSession();
-  const hasSession = !!sessionCheck?.session?.user;
-  if(!localStorage.getItem(OB_KEY) && !hasSession){
-    showOnboardingIfNeeded();
-  } else if(!state.userLocation && !isPasswordRecoveryLink){
-    window.setTimeout(requestLocation, 400);
-  }
-
   const sharedEventId = new URL(window.location.href).searchParams.get('evento');
   if(sharedEventId && state.events.some(ev => ev.id === sharedEventId)) openDetail(sharedEventId);
   window.addEventListener('popstate', () => {
@@ -4886,6 +4878,11 @@ async function init(){
   }
   updateAccountBtn();
   handleRoute();
+  if(!localStorage.getItem(OB_KEY) && !currentUser && !isPasswordRecoveryLink){
+    showOnboardingIfNeeded();
+  } else if(!currentUser && !state.userLocation && !isPasswordRecoveryLink){
+    window.setTimeout(requestLocation, 400);
+  }
   if(isPasswordRecoveryLink && currentUser){
     passwordRecoveryMode = true;
     navigate('cambiar-contrasena');
