@@ -4896,6 +4896,8 @@ async function init(){
       return;
     }
     if(currentUser){
+      localStorage.setItem(OB_KEY, '1');
+      closeOnboarding();
       await ensureProfile();
       await fetchCurrentUserProfile();
       await loadPreferences();
