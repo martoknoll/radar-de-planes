@@ -2626,99 +2626,14 @@ function handleAddEventClick(){
 let editingEventId = null;
 let reopenAdminAfterForm = false;
 let reopenMyEventsAfterForm = false;
+let formReturnRoute = '';
+let pendingEditEvent = null;
 let editingProfile = false;
 
 function openForm(eventToEdit){
-  editingEventId = eventToEdit ? eventToEdit.id : null;
-  const options = CATEGORIES.map(cat => `<option value="${cat.id}" ${eventToEdit && eventToEdit.category === cat.id ? 'selected' : ''}>${cat.label}</option>`).join('');
-  els.formSheet.innerHTML = `
-    <button type="button" class="sheet-close" id="closeFormBtn" aria-label="Cerrar formulario"><span class="x-mark" aria-hidden="true">&times;</span></button>
-    <div class="sheet-handle" aria-hidden="true"></div>
-    <div class="form-content">
-      <h2 class="form-title" id="formTitle">${eventToEdit ? 'Editar plan' : 'Sumar un plan'}</h2>
-      <p class="form-sub">${eventToEdit ? 'Los cambios se actualizan al instante para todos los usuarios.' : 'El evento se publica para todos los usuarios y aparece al instante en el mapa.'}</p>
-
-      <form id="eventForm" novalidate>
-        <div class="field">
-          <label for="fTitle">Título</label>
-          <input id="fTitle" type="text" maxlength="80" placeholder="Ej: Escucha de discos en Chacarita" value="${escapeHtml(eventToEdit?.title || '')}" required>
-        </div>
-
-        <div class="field-row">
-          <div class="field">
-            <label for="fCategory">Categoría</label>
-            <select id="fCategory" required>${options}</select>
-          </div>
-          <div class="field">
-            <label for="fPrice">Precio</label>
-            <input id="fPrice" type="text" maxlength="24" placeholder="Gratis / $5000" value="${escapeHtml(eventToEdit?.price || '')}" required>
-          </div>
-        </div>
-
-        <div class="field-row">
-          <div class="field">
-            <label for="fDate">Fecha</label>
-            <input id="fDate" type="date" min="${todayStr()}" value="${eventToEdit?.date || todayStr()}" required>
-          </div>
-          <div class="field">
-            <label for="fTime">Hora</label>
-            <input id="fTime" type="time" value="${eventToEdit?.time || ''}" required>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="fAddress">Dirección <em>se busca en el mapa</em></label>
-          <div class="address-row">
-            <input id="fAddress" type="text" placeholder="Ej: Av. Corrientes 1234, CABA" value="${escapeHtml(eventToEdit?.address || '')}" required>
-            <button type="button" class="secondary-btn" id="geocodeBtn"><i class="ti ti-map-search"></i></button>
-          </div>
-          <div class="geocode-status" id="geocodeStatus">Escribí una dirección y tocá el ícono para ubicarla.</div>
-        </div>
-
-        <div class="field">
-          <label>Ubicación exacta</label>
-          <div id="formMap"></div>
-          <div class="helper-text">Podés arrastrar el pin o tocar el mapa para ajustar la ubicación antes de publicar.</div>
-        </div>
-
-        <div class="field">
-          <label for="fOrganizer">Organizador</label>
-          <input id="fOrganizer" type="text" maxlength="60" placeholder="Nombre del espacio, club o productor" value="${escapeHtml(eventToEdit?.organizer ?? currentUserProfile?.display_name ?? '')}" required>
-        </div>
-
-        <div class="field">
-          <label for="fDesc">Descripción</label>
-          <textarea id="fDesc" maxlength="360" placeholder="Contá de qué se trata, qué incluye y si hace falta reservar." required>${escapeHtml(eventToEdit?.desc || '')}</textarea>
-        </div>
-
-        <div class="field">
-          <label for="fImg">Imagen <em>opcional</em></label>
-          <input id="fImg" type="url" placeholder="https://..." value="${escapeHtml(eventToEdit?.img || '')}">
-        </div>
-
-        <div class="field">
-          <label for="fTicketUrl">Link para sacar entradas o anotarse <em>opcional</em></label>
-          <input id="fTicketUrl" type="url" placeholder="https://..." value="${escapeHtml(eventToEdit?.ticketUrl || '')}">
-        </div>
-
-        <div class="form-submit-row">
-          <button type="submit" class="submit-btn">${eventToEdit ? 'Guardar cambios' : 'Publicar plan en el radar'}</button>
-        </div>
-      </form>
-    </div>
-  `;
-
-  openSheet(els.formOverlay);
-  document.getElementById('closeFormBtn').addEventListener('click', () => closeSheet(els.formOverlay));
-  document.getElementById('eventForm').addEventListener('submit', handleFormSubmit);
-  document.getElementById('geocodeBtn').addEventListener('click', geocodeAddress);
-  document.getElementById('fAddress').addEventListener('keydown', event => {
-    if(event.key === 'Enter'){
-      event.preventDefault();
-      geocodeAddress();
-    }
-  });
-  initFormMap(eventToEdit);
+  pendingEditEvent = eventToEdit || null;
+  formReturnRoute = location.hash.slice(1) || '';
+  navigate('sumar-plan');
 }
 
 function initFormMap(eventToEdit){
@@ -2825,12 +2740,17 @@ async function handleFormSubmit(event){
     return;
   }
   const savedEvent = rowToEvent(data);
-  if(editingEventId){
+  const wasEditing = !!editingEventId;
+  editingEventId = null;
+  pendingEditEvent = null;
+  if(wasEditing){
     state.events = state.events.map(ev => ev.id === savedEvent.id ? savedEvent : ev);
-    editingEventId = null;
-    closeSheet(els.formOverlay);
     render();
-    if(els.adminOverlay.classList.contains('open')) renderAdminSheet();
+    const ret = formReturnRoute;
+    formReturnRoute = '';
+    navigate(ret);
+    if(reopenAdminAfterForm){ reopenAdminAfterForm = false; setTimeout(openAdminSheet, 300); }
+    if(reopenMyEventsAfterForm){ reopenMyEventsAfterForm = false; }
     showToast('Evento actualizado');
     return;
   }
@@ -2839,9 +2759,10 @@ async function handleFormSubmit(event){
   state.dateFilter = daysUntil(dateValue) === 0 ? 'hoy' : 'todos';
   state.freeOnly = false;
   state.interestedOnly = false;
-  closeSheet(els.formOverlay);
   render();
-  selectOnMap(savedEvent.id);
+  formReturnRoute = '';
+  navigate('');
+  setTimeout(() => selectOnMap(savedEvent.id), 350);
   showToast('Plan publicado en el radar');
 }
 
@@ -3081,6 +3002,11 @@ function navigate(route){
 function handleRoute(){
   const hash = location.hash.replace(/^#/, '');
   const pv = document.getElementById('pageView');
+  // Cleanup form map when leaving form page
+  if(hash !== 'sumar-plan' && formMap){
+    formMap.remove();
+    formMap = null;
+  }
   if(!hash){
     pv.classList.remove('active');
     pv.setAttribute('aria-hidden','true');
@@ -3093,6 +3019,7 @@ function handleRoute(){
     'mis-planes':         renderMyPlansPage,
     'mis-eventos':        renderMyEventsPage,
     'cambiar-contrasena': renderChangePasswordPage,
+    'sumar-plan':         renderFormPage,
   };
   const fn = routes[hash];
   if(!fn){ navigate(''); return; }
@@ -3547,6 +3474,93 @@ function renderChangePasswordPage(){
     </div>
   `;
   document.getElementById('newPasswordForm').addEventListener('submit', handleSetNewPassword);
+}
+
+/* ---- Page: Sumar / editar plan ---- */
+
+function renderFormPage(){
+  if(!currentUser){ navigate('login'); return; }
+  const eventToEdit = pendingEditEvent;
+  editingEventId = eventToEdit ? eventToEdit.id : null;
+  const options = CATEGORIES.map(cat => `<option value="${cat.id}" ${eventToEdit && eventToEdit.category === cat.id ? 'selected' : ''}>${cat.label}</option>`).join('');
+  const pv = document.getElementById('pageView');
+  pv.innerHTML = `
+    <div class="page-header">
+      <button type="button" class="page-back-btn" id="pageBackBtn" aria-label="Volver">←</button>
+      <h1 class="page-title">${eventToEdit ? 'Editar plan' : 'Sumar un plan'}</h1>
+    </div>
+    <div class="page-body">
+      <p style="color:var(--muted);font-size:13px;margin-bottom:18px;">${eventToEdit ? 'Los cambios se actualizan al instante para todos los usuarios.' : 'El evento se publica para todos los usuarios y aparece al instante en el mapa.'}</p>
+      <form id="eventForm" novalidate>
+        <div class="field">
+          <label for="fTitle">Título</label>
+          <input id="fTitle" type="text" maxlength="80" placeholder="Ej: Escucha de discos en Chacarita" value="${escapeHtml(eventToEdit?.title || '')}" required>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="fCategory">Categoría</label>
+            <select id="fCategory" required>${options}</select>
+          </div>
+          <div class="field">
+            <label for="fPrice">Precio</label>
+            <input id="fPrice" type="text" maxlength="24" placeholder="Gratis / $5000" value="${escapeHtml(eventToEdit?.price || '')}" required>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="fDate">Fecha</label>
+            <input id="fDate" type="date" min="${todayStr()}" value="${eventToEdit?.date || todayStr()}" required>
+          </div>
+          <div class="field">
+            <label for="fTime">Hora</label>
+            <input id="fTime" type="time" value="${eventToEdit?.time || ''}" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="fAddress">Dirección <em>se busca en el mapa</em></label>
+          <div class="address-row">
+            <input id="fAddress" type="text" placeholder="Ej: Av. Corrientes 1234, CABA" value="${escapeHtml(eventToEdit?.address || '')}" required>
+            <button type="button" class="secondary-btn" id="geocodeBtn"><i class="ti ti-map-search"></i></button>
+          </div>
+          <div class="geocode-status" id="geocodeStatus">Escribí una dirección y tocá el ícono para ubicarla.</div>
+        </div>
+        <div class="field">
+          <label>Ubicación exacta</label>
+          <div id="formMap"></div>
+          <div class="helper-text">Podés arrastrar el pin o tocar el mapa para ajustar la ubicación antes de publicar.</div>
+        </div>
+        <div class="field">
+          <label for="fOrganizer">Organizador</label>
+          <input id="fOrganizer" type="text" maxlength="60" placeholder="Nombre del espacio, club o productor" value="${escapeHtml(eventToEdit?.organizer ?? currentUserProfile?.display_name ?? '')}" required>
+        </div>
+        <div class="field">
+          <label for="fDesc">Descripción</label>
+          <textarea id="fDesc" maxlength="360" placeholder="Contá de qué se trata, qué incluye y si hace falta reservar." required>${escapeHtml(eventToEdit?.desc || '')}</textarea>
+        </div>
+        <div class="field">
+          <label for="fImg">Imagen <em>opcional</em></label>
+          <input id="fImg" type="url" placeholder="https://..." value="${escapeHtml(eventToEdit?.img || '')}">
+        </div>
+        <div class="field">
+          <label for="fTicketUrl">Link para sacar entradas o anotarse <em>opcional</em></label>
+          <input id="fTicketUrl" type="url" placeholder="https://..." value="${escapeHtml(eventToEdit?.ticketUrl || '')}">
+        </div>
+        <div class="form-submit-row">
+          <button type="submit" class="submit-btn">${eventToEdit ? 'Guardar cambios' : 'Publicar plan en el radar'}</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.getElementById('pageBackBtn').onclick = () => {
+    pendingEditEvent = null;
+    navigate(formReturnRoute);
+  };
+  document.getElementById('eventForm').addEventListener('submit', handleFormSubmit);
+  document.getElementById('geocodeBtn').addEventListener('click', geocodeAddress);
+  document.getElementById('fAddress').addEventListener('keydown', event => {
+    if(event.key === 'Enter'){ event.preventDefault(); geocodeAddress(); }
+  });
+  initFormMap(eventToEdit);
 }
 
 /* ---- Legacy account sheet (kept for fallback) ---- */
